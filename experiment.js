@@ -34,9 +34,9 @@ choices:["Start"]
 
 })
 const TOTAL_TRIALS = 50
+const TARGET_PROBABILITY = 0.8
 const STIMULUS_DURATION = 500
 const INTERVAL = 1000
-const TARGET_PROBABILITY = 0.8
 
 let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".replace("X","").split("")
 
@@ -45,7 +45,7 @@ for(let i=0;i<TOTAL_TRIALS;i++){
 let stim
 let type
 
-if(Math.random()<TARGET_PROBABILITY){
+if(Math.random() < TARGET_PROBABILITY){
 stim = letters[Math.floor(Math.random()*letters.length)]
 type="GO"
 }else{
@@ -57,11 +57,11 @@ timeline.push({
 
 type: jsPsychHtmlButtonResponse,
 
-stimulus:`<h1>${stim}</h1>`,
+stimulus:`<h1 style="font-size:80px">${stim}</h1>`,
 
 choices:["Tap"],
 
-trial_duration:STIMULUS_DURATION,
+trial_duration: STIMULUS_DURATION,
 
 data:{
 task:"CPT",
@@ -72,13 +72,13 @@ trial_type:type
 })
 
 timeline.push({
-
-type: jsPsychHtmlButtonResponse,
+type: jsPsychHtmlKeyboardResponse,
 stimulus:"",
-choices:[],
+choices:"NO_KEYS",
 trial_duration:INTERVAL
-
 })
+
+}
 
 }
 let stroop_start
