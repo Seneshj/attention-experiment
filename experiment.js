@@ -15,135 +15,182 @@ body:data
 
 let timeline = []
 
-/* PARTICIPANT ID */
-
-let participant_id = "P" + Math.floor(Math.random()*100000)
+let participant = "P" + Math.floor(Math.random()*100000)
 
 jsPsych.data.addProperties({
-participant:participant_id
+participant_id:participant
 })
-
-/* INTRO */
-
 timeline.push({
 
-type: jsPsychHtmlKeyboardResponse,
-stimulus:"<h2>Attention Experiment</h2><p>Press any key to start</p>"
+type: jsPsychHtmlButtonResponse,
+
+stimulus:`
+<h2>Attention Experiment</h2>
+<p>This study contains 3 tasks</p>
+<p>CPT • Stroop • Flanker</p>
+`,
+
+choices:["Start"]
 
 })
-
-/* ====================
-CPT TASK
-==================== */
+const TOTAL_TRIALS = 50
+const STIMULUS_DURATION = 500
+const INTERVAL = 1000
+const TARGET_PROBABILITY = 0.8
 
 let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".replace("X","").split("")
 
-for(let i=0;i<50;i++){
+for(let i=0;i<TOTAL_TRIALS;i++){
 
-let stimulus
+let stim
 let type
 
-if(Math.random()<0.8){
-stimulus = letters[Math.floor(Math.random()*letters.length)]
+if(Math.random()<TARGET_PROBABILITY){
+stim = letters[Math.floor(Math.random()*letters.length)]
 type="GO"
-}
-else{
-stimulus="X"
+}else{
+stim="X"
 type="NOGO"
 }
 
 timeline.push({
 
-type: jsPsychHtmlKeyboardResponse,
+type: jsPsychHtmlButtonResponse,
 
-stimulus:`<h1>${stimulus}</h1>`,
+stimulus:`<h1>${stim}</h1>`,
 
-choices:[" "],
+choices:["Tap"],
 
-trial_duration:500,
+trial_duration:STIMULUS_DURATION,
 
 data:{
 task:"CPT",
-stimulus:stimulus,
+stimulus:stim,
 trial_type:type
 }
 
 })
 
+timeline.push({
+
+type: jsPsychHtmlButtonResponse,
+stimulus:"",
+choices:[],
+trial_duration:INTERVAL
+
+})
+
 }
+let stroop_start
 
-/* ====================
-STROOP TASK
-==================== */
+timeline.push({
+type: jsPsychCallFunction,
+func:()=>{stroop_start = performance.now()}
+})
 
-let colors=["red","blue","green","yellow"]
+let colors=["RED","BLUE","GREEN","YELLOW"]
 
-for(let i=0;i<40;i++){
+let stroop_trial={
+
+type: jsPsychHtmlButtonResponse,
+
+stimulus:function(){
 
 let word = colors[Math.floor(Math.random()*4)]
 let color = colors[Math.floor(Math.random()*4)]
 
-let trial_type = (word==color) ? "congruent" : "incongruent"
+jsPsych.data.addProperties({
+word:word,
+color:color
+})
+
+return `<h1 style="color:${color.toLowerCase()}">${word}</h1>`
+
+},
+
+choices:["YELLOW","GREEN"],
+
+button_html:`
+<button style="font-size:30px;width:200px;height:80px;margin:20px;">
+%choice%
+</button>
+`,
+
+data:{task:"Stroop"}
+
+}
 
 timeline.push({
 
-type: jsPsychHtmlKeyboardResponse,
+timeline:[stroop_trial],
 
-stimulus:`<h1 style="color:${color}">${word.toUpperCase()}</h1>`,
+loop_function:function(){
 
-choices:["ArrowLeft","ArrowRight"],
+return (performance.now()-stroop_start)<90000
 
-data:{
-task:"Stroop",
-word:word,
-color:color,
-trial_type:trial_type
 }
 
 })
+let flanker_start
 
-}
+timeline.push({
+type: jsPsychCallFunction,
+func:()=>{flanker_start = performance.now()}
+})
 
-/* ====================
-FLANKER TASK
-==================== */
+let stimuli=[
 
-let stimuli = [
-{stim:"<<<<<",type:"congruent"},
-{stim:">>>>>",type:"congruent"},
-{stim:"<<><<",type:"incongruent"},
-{stim:">><>>",type:"incongruent"}
+{stim:"<<<<<",correct:0,type:"congruent"},
+{stim:">>>>>",correct:1,type:"congruent"},
+{stim:"<<><<",correct:1,type:"incongruent"},
+{stim:">><>>",correct:0,type:"incongruent"}
+
 ]
 
-for(let i=0;i<40;i++){
+let flanker_trial={
 
-let trial = stimuli[Math.floor(Math.random()*4)]
+type: jsPsychHtmlButtonResponse,
+
+stimulus:function(){
+
+let trial=stimuli[Math.floor(Math.random()*4)]
+
+jsPsych.data.addProperties(trial)
+
+return `<h1>${trial.stim}</h1>`
+
+},
+
+choices:["⬅️","➡️"],
+
+button_html:`
+<button style="font-size:40px;width:120px;height:80px;margin:30px;">
+%choice%
+</button>
+`,
+
+data:{task:"Flanker"}
+
+}
 
 timeline.push({
 
-type: jsPsychHtmlKeyboardResponse,
+timeline:[flanker_trial],
 
-stimulus:`<h1>${trial.stim}</h1>`,
+loop_function:function(){
 
-choices:["ArrowLeft","ArrowRight"],
+return (performance.now()-flanker_start)<90000
 
-data:{
-task:"Flanker",
-stimulus:trial.stim,
-trial_type:trial.type
 }
 
 })
-
-}
-
-/* END */
-
 timeline.push({
 
-type: jsPsychHtmlKeyboardResponse,
-stimulus:"<h2>Thank you for participating</h2>"
+type: jsPsychHtmlButtonResponse,
+
+stimulus:"<h2>Thank you for participating</h2>",
+
+choices:["Finish"]
 
 })
-
 jsPsych.run(timeline)
