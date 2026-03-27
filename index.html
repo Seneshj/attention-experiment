@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Attention Metrics Lab - CPT, Stroop & Flanker Tasks</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #0a0f1e 0%, #0c1222 100%);
+            margin: 0;
+            padding: 16px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #eef2ff;
+        }
+
+        .app-container {
+            max-width: 650px;
+            width: 100%;
+            background: rgba(18, 25, 45, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 2rem;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            overflow: hidden;
+            padding: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            text-align: center;
+            margin: 0 0 0.25rem;
+            background: linear-gradient(135deg, #a5d8ff, #ffb347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .sub {
+            text-align: center;
+            color: #8e9ecc;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+        }
+
+        .task-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .task-btn {
+            background: #1e2a3e;
+            border: none;
+            color: #ccdeee;
+            padding: 10px 20px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .task-btn.active {
+            background: #4f7df3;
+            color: white;
+            box-shadow: 0 0 15px #4f7df3;
+        }
+
+        .task-panel {
+            background: #0b1020;
+            border-radius: 1.5rem;
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
+            border: 1px solid #2a345a;
+        }
+
+        .stimulus-area {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .stimulus-text {
+            font-size: 5rem;
+            font-weight: bold;
+            background: #00000030;
+            padding: 1rem;
+            border-radius: 1.5rem;
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            min-width: 200px;
+            letter-spacing: 4px;
+        }
+
+        .feedback {
+            font-size: 1rem;
+            margin-top: 12px;
+            background: #1a2340;
+            padding: 8px 16px;
+            border-radius: 40px;
+            display: inline-block;
+        }
+
+        .instructions {
+            background: #111827;
+            padding: 12px;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            text-align: center;
+            margin: 12px 0;
+            border-left: 3px solid #4f7df3;
+        }
+
+        .progress-info {
+            background: #00000055;
+            padding: 8px 15px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .control-btn {
+            background: #2e3b4e;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1rem;
+            margin: 6px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .control-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Task-specific button panels */
+        .button-panel {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* CPT Panel - Single Space Button */
+        .cpt-panel .response-btn {
+            background: #4f7df3;
+            border: none;
+            color: white;
+            padding: 20px 50px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            touch-action: manipulation;
+        }
+
+        .cpt-panel .response-btn:active {
+            transform: scale(0.96);
+            background: #2e5fd3;
+        }
+
+        /* Stroop Panel - Two Color Buttons (Dynamic colors based on options) */
+        .stroop-panel {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .color-btn {
+            border: none;
+            padding: 20px 35px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            touch-action: manipulation;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            min-width: 140px;
+        }
+
+        .color-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* Flanker Panel - Arrow Buttons */
+        .flanker-panel {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .arrow-btn {
+            background: #2a3a55;
+            border: none;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            touch-action: manipulation;
+            min-width: 120px;
+        }
+
+        .arrow-btn:active {
+            transform: scale(0.96);
+            background: #4f7df3;
+        }
+
+        .download-area {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .reset-btn {
+            background: #7a3e2e;
+        }
+
+        .download-btn {
+            background: #2e7a5e;
+        }
+
+        .stop-btn {
+            background: #8b3a3a;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 20px;
+            color: #6a7c9e;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 550px) {
+            .app-container {
+                padding: 1rem;
+            }
+            .stimulus-text {
+                font-size: 3.5rem;
+                padding: 0.8rem;
+            }
+            .cpt-panel .response-btn {
+                padding: 15px 40px;
+                font-size: 1.5rem;
+            }
+            .color-btn {
+                padding: 15px 25px;
+                font-size: 1rem;
+                min-width: 110px;
+            }
+            .arrow-btn {
+                padding: 15px 30px;
+                font-size: 1.5rem;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <h1>🧠 Attention Metrics Lab</h1>
+    <div class="sub">CPT · Stroop · Flanker | Touch Optimized</div>
+
+    <div class="task-selector">
+        <button class="task-btn" data-task="cpt">🎯 CPT (Go/No-Go)</button>
+        <button class="task-btn" data-task="stroop">🎨 Stroop Task</button>
+        <button class="task-btn" data-task="flanker">⬅️➡️ Flanker Task</button>
+    </div>
+
+    <div class="task-panel">
+        <div class="progress-info" id="progressInfo">⚙️ Select a task & press START</div>
+        <div class="stimulus-area">
+            <div class="stimulus-text" id="stimulusDisplay">—</div>
+            <div class="feedback" id="feedbackMsg">Ready</div>
+        </div>
+        <div class="instructions" id="instructionText">
+            🔹 <strong>CPT:</strong> Press SPACE button for any letter EXCEPT 'X'<br>
+            🔹 <strong>Stroop:</strong> Tap the button that matches the INK COLOR (ignore the word)<br>
+            🔹 <strong>Flanker:</strong> Tap LEFT or RIGHT arrow matching the CENTRAL arrow
+        </div>
+        
+        <!-- Dynamic Button Panel - Changes based on task -->
+        <div id="buttonPanel"></div>
+        
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 12px;">
+            <button class="control-btn" id="startBtn">▶ START TASK</button>
+            <button class="control-btn stop-btn" id="stopBtn">⏹️ STOP TASK</button>
+            <button class="control-btn reset-btn" id="resetDataBtn">🗑 RESET DATA</button>
+        </div>
+    </div>
+
+    <div class="download-area">
+        <button class="control-btn download-btn" id="downloadCsvBtn">📥 DOWNLOAD FULL DATASET</button>
+    </div>
+    <footer>✅ All responses automatically logged | Each task has custom buttons matching the experiment design</footer>
+</div>
+
+<script>
+    // ==================== GLOBAL DATA STORAGE ====================
+    let allTrials = [];
+    let currentTask = "cpt";
+    let taskActive = false;
+    let trialStartTime = 0;
+    let expectedResponse = null;
+    let currentTrialsQueue = [];
+    let currentTrialIndex = 0;
+    let currentTaskName = "";
+    let currentTimeout = null;
+    let currentStroopOptions = null; // Store current color options for Stroop
+    
+    // DOM elements
+    const stimulusDisplay = document.getElementById("stimulusDisplay");
+    const feedbackMsg = document.getElementById("feedbackMsg");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const resetDataBtn = document.getElementById("resetDataBtn");
+    const downloadBtn = document.getElementById("downloadCsvBtn");
+    const progressInfo = document.getElementById("progressInfo");
+    const instructionText = document.getElementById("instructionText");
+    const buttonPanel = document.getElementById("buttonPanel");
+    
+    // ==================== UI BUTTON GENERATION ====================
+    function updateButtonPanel() {
+        if (currentTask === "cpt") {
+            buttonPanel.innerHTML = `
+                <div class="button-panel cpt-panel">
+                    <button class="response-btn" id="cptSpaceBtn">␣ SPACE</button>
+                </div>
+            `;
+            document.getElementById("cptSpaceBtn")?.addEventListener("click", () => handleResponse("space"));
+        } 
+        else if (currentTask === "stroop") {
+            // Stroop buttons will be dynamically updated each trial
+            buttonPanel.innerHTML = `
+                <div class="button-panel stroop-panel" id="stroopButtons">
+                    <button class="color-btn" id="stroopLeftBtn">Loading...</button>
+                    <button class="color-btn" id="stroopRightBtn">Loading...</button>
+                </div>
+            `;
+        } 
+        else if (currentTask === "flanker") {
+            buttonPanel.innerHTML = `
+                <div class="button-panel flanker-panel">
+                    <button class="arrow-btn" id="flankerLeftBtn">⬅️ LEFT</button>
+                    <button class="arrow-btn" id="flankerRightBtn">RIGHT ➡️</button>
+                </div>
+            `;
+            document.getElementById("flankerLeftBtn")?.addEventListener("click", () => handleResponse("left"));
+            document.getElementById("flankerRightBtn")?.addEventListener("click", () => handleResponse("right"));
+        }
+    }
+    
+    // Update Stroop buttons with current trial's color options
+    function updateStroopButtons(leftColor, rightColor, leftText, rightText) {
+        const leftBtn = document.getElementById("stroopLeftBtn");
+        const rightBtn = document.getElementById("stroopRightBtn");
+        if (leftBtn && rightBtn) {
+            leftBtn.textContent = leftText || leftColor;
+            rightBtn.textContent = rightText || rightColor;
+            leftBtn.style.backgroundColor = leftColor;
+            rightBtn.style.backgroundColor = rightColor;
+            
+            // Remove old listeners and add new ones
+            const newLeftBtn = leftBtn.cloneNode(true);
+            const newRightBtn = rightBtn.cloneNode(true);
+            leftBtn.parentNode.replaceChild(newLeftBtn, leftBtn);
+            rightBtn.parentNode.replaceChild(newRightBtn, rightBtn);
+            
+            newLeftBtn.addEventListener("click", () => handleResponse("left"));
+            newRightBtn.addEventListener("click", () => handleResponse("right"));
+        }
+    }
+    
+    // ==================== HELPER: Record Trial ====================
+    function recordTrial(taskName, condition, stimulus, correctResp, userResp, rt, accuracy, extra = {}) {
+        const trialRecord = {
+            timestamp: new Date().toISOString(),
+            task: taskName,
+            condition: condition,
+            stimulus: stimulus,
+            correct_response: correctResp,
+            user_response: userResp,
+            reaction_time_ms: Math.round(rt),
+            accuracy: accuracy ? 1 : 0,
+            ...extra
+        };
+        allTrials.push(trialRecord);
+        
+        if (accuracy === 1) {
+            feedbackMsg.innerText = "✓ Correct!";
+            feedbackMsg.style.background = "#1e4620";
+        } else {
+            feedbackMsg.innerText = "✗ Incorrect";
+            feedbackMsg.style.background = "#662222";
+        }
+        setTimeout(() => {
+            if (feedbackMsg) feedbackMsg.style.background = "#1a2340";
+        }, 400);
+    }
+    
+    // ==================== GENERATE TRIALS ====================
+    function generateCPTTrials(n = 20) {
+        let trials = [];
+        for (let i = 0; i < n; i++) {
+            let isGo = Math.random() < 0.75;
+            let stimulus = "";
+            if (isGo) {
+                const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => l !== "X");
+                stimulus = letters[Math.floor(Math.random() * letters.length)];
+            } else {
+                stimulus = "X";
+            }
+            trials.push({
+                type: isGo ? "go" : "nogo",
+                stimulus: stimulus,
+                shouldPress: isGo
+            });
+        }
+        return trials;
+    }
+    
+    function generateStroopTrials(n = 16) {
+        const colorNames = ["RED", "GREEN", "BLUE", "YELLOW"];
+        const colorHex = { "RED": "#ff5555", "GREEN": "#55ff55", "BLUE": "#5599ff", "YELLOW": "#ffff77" };
+        let trials = [];
+        
+        for (let i = 0; i < n; i++) {
+            let condition = Math.random() < 0.5 ? "congruent" : "incongruent";
+            let word = colorNames[Math.floor(Math.random() * colorNames.length)];
+            let inkColor = condition === "congruent" ? word : colorNames[Math.floor(Math.random() * colorNames.length)];
+            while (condition === "incongruent" && inkColor === word) {
+                inkColor = colorNames[Math.floor(Math.random() * colorNames.length)];
+            }
+            
+            // Create two button options: correct color and a random wrong color
+            let correctColor = inkColor;
+            let wrongColors = colorNames.filter(c => c !== correctColor);
+            let wrongColor = wrongColors[Math.floor(Math.random() * wrongColors.length)];
+            
+            // Randomize left/right position
+            let leftIsCorrect = Math.random() < 0.5;
+            let leftColor = leftIsCorrect ? correctColor : wrongColor;
+            let rightColor = leftIsCorrect ? wrongColor : correctColor;
+            let leftText = leftColor;
+            let rightText = rightColor;
+            
+            trials.push({
+                type: condition,
+                word: word,
+                ink: inkColor,
+                inkColorHex: colorHex[inkColor],
+                correctColor: correctColor,
+                leftColor: leftColor,
+                rightColor: rightColor,
+                leftText: leftText,
+                rightText: rightText,
+                correctSide: leftIsCorrect ? "left" : "right"
+            });
+        }
+        return trials;
+    }
+    
+    function generateFlankerTrials(n = 18) {
+        let trials = [];
+        for (let i = 0; i < n; i++) {
+            let condition = Math.random() < 0.5 ? "congruent" : "incongruent";
+            let central = Math.random() < 0.5 ? "<" : ">";
+            let flanker = central;
+            if (condition === "incongruent") {
+                flanker = central === "<" ? ">" : "<";
+            }
+            let stimulus = flanker + flanker + central + flanker + flanker;
+            let correctResp = central === "<" ? "left" : "right";
+            trials.push({
+                type: condition,
+                stimulus: stimulus,
+                correctResp: correctResp,
+                central: central
+            });
+        }
+        return trials;
+    }
+    
+    // ==================== TASK CONTROL ====================
+    function abortCurrentTask() {
+        if (currentTimeout) {
+            clearTimeout(currentTimeout);
+            currentTimeout = null;
+        }
+        taskActive = false;
+    }
+    
+    function stopTask() {
+        if (taskActive) {
+            abortCurrentTask();
+            taskActive = false;
+            feedbackMsg.innerText = "Task stopped by user.";
+            progressInfo.innerText = "Task stopped. Press START to begin again.";
+            stimulusDisplay.innerText = "—";
+        }
+    }
+    
+    function resetTaskUI() {
+        abortCurrentTask();
+        taskActive = false;
+        stimulusDisplay.innerText = "—";
+        feedbackMsg.innerText = "Ready";
+        progressInfo.innerText = "Select a task & press START.";
+    }
+    
+    function nextTrial() {
+        if (!taskActive) return;
+        if (currentTrialIndex >= currentTrialsQueue.length) {
+            taskActive = false;
+            feedbackMsg.innerText = "🎉 Task Completed! Great job!";
+            stimulusDisplay.innerText = "✅";
+            progressInfo.innerText = "Finished! Download your data.";
+            if (currentTimeout) clearTimeout(currentTimeout);
+            return;
+        }
+        
+        const trial = currentTrialsQueue[currentTrialIndex];
+        trialStartTime = performance.now();
+        
+        if (currentTaskName === "CPT") {
+            stimulusDisplay.innerText = trial.stimulus;
+            stimulusDisplay.style.color = "white";
+            expectedResponse = trial.shouldPress ? "space" : null;
+            
+            if (currentTimeout) clearTimeout(currentTimeout);
+            currentTimeout = setTimeout(() => {
+                if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
+                    let rtValue = performance.now() - trialStartTime;
+                    let isGo = (trial.type === "go");
+                    let accuracy = 0;
+                    let userRespDesc = "timeout";
+                    if (isGo) {
+                        accuracy = 0;
+                        userRespDesc = "omission";
+                    } else {
+                        accuracy = 1;
+                        userRespDesc = "correct_no_press";
+                    }
+                    recordTrial("CPT", trial.type, trial.stimulus, isGo ? "space" : "no press", userRespDesc, rtValue, accuracy, {});
+                    currentTrialIndex++;
+                    nextTrial();
+                }
+            }, 1000);
+        } 
+        else if (currentTaskName === "Stroop") {
+            stimulusDisplay.innerText = trial.word;
+            stimulusDisplay.style.color = trial.inkColorHex;
+            expectedResponse = trial.correctSide;
+            
+            // Update buttons with current trial's colors
+            updateStroopButtons(trial.leftColor, trial.rightColor, trial.leftText, trial.rightText);
+            
+            if (currentTimeout) clearTimeout(currentTimeout);
+            currentTimeout = setTimeout(() => {
+                if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
+                    let rtLate = performance.now() - trialStartTime;
+                    recordTrial("Stroop", trial.type, `${trial.word} (${trial.ink})`, trial.correctSide, "timeout", rtLate, 0, {});
+                    currentTrialIndex++;
+                    nextTrial();
+                }
+            }, 2000);
+        } 
+        else if (currentTaskName === "Flanker") {
+            stimulusDisplay.innerText = trial.stimulus;
+            stimulusDisplay.style.color = "white";
+            expectedResponse = trial.correctResp;
+            
+            if (currentTimeout) clearTimeout(currentTimeout);
+            currentTimeout = setTimeout(() => {
+                if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
+                    let rtMiss = performance.now() - trialStartTime;
+                    recordTrial("Flanker", trial.type, trial.stimulus, trial.correctResp, "timeout", rtMiss, 0, {});
+                    currentTrialIndex++;
+                    nextTrial();
+                }
+            }, 1800);
+        }
+        
+        progressInfo.innerText = `${currentTaskName} | Trial ${currentTrialIndex+1}/${currentTrialsQueue.length} | ${trial.type.toUpperCase()}`;
+    }
+    
+    // ==================== RESPONSE HANDLER ====================
+    function handleResponse(responseKey) {
+        if (!taskActive) return false;
+        
+        const currentTrial = currentTrialsQueue[currentTrialIndex];
+        if (!currentTrial) return false;
+        
+        const rt = performance.now() - trialStartTime;
+        
+        if (currentTaskName === "CPT") {
+            if (responseKey === "space") {
+                const isGo = currentTrial.type === "go";
+                let accuracy = isGo ? 1 : 0;
+                let userRespStr = isGo ? "space" : "commission_error";
+                recordTrial("CPT", currentTrial.type, currentTrial.stimulus, isGo ? "space" : "no press", userRespStr, rt, accuracy, {});
+                if (currentTimeout) clearTimeout(currentTimeout);
+                currentTrialIndex++;
+                nextTrial();
+                return true;
+            }
+            return false;
+        }
+        
+        // Stroop & Flanker
+        if (responseKey === "left" || responseKey === "right") {
+            const isCorrect = (responseKey === expectedResponse);
+            let stimulusDesc = "";
+            if (currentTaskName === "Stroop") {
+                stimulusDesc = `${currentTrial.word} (${currentTrial.ink})`;
+            } else {
+                stimulusDesc = currentTrial.stimulus;
+            }
+            recordTrial(currentTaskName, currentTrial.type, stimulusDesc, expectedResponse, responseKey, rt, isCorrect ? 1 : 0, {});
+            if (currentTimeout) clearTimeout(currentTimeout);
+            currentTrialIndex++;
+            nextTrial();
+            return true;
+        }
+        return false;
+    }
+    
+    // ==================== START TASK ====================
+    function startCurrentTask() {
+        if (taskActive) {
+            abortCurrentTask();
+            taskActive = false;
+        }
+        
+        if (currentTask === "cpt") {
+            currentTrialsQueue = generateCPTTrials(20);
+            currentTaskName = "CPT";
+        } else if (currentTask === "stroop") {
+            currentTrialsQueue = generateStroopTrials(16);
+            currentTaskName = "Stroop";
+        } else {
+            currentTrialsQueue = generateFlankerTrials(18);
+            currentTaskName = "Flanker";
+        }
+        
+        if (currentTrialsQueue.length === 0) return;
+        currentTrialIndex = 0;
+        taskActive = true;
+        feedbackMsg.innerText = "Task running... Respond quickly!";
+        if (currentTimeout) clearTimeout(currentTimeout);
+        nextTrial();
+    }
+    
+    // ==================== DATA SUMMARY ====================
+    function computeSummaryDataset() {
+        if (allTrials.length === 0) return null;
+        
+        const cptTrials = allTrials.filter(t => t.task === "CPT");
+        const stroopTrials = allTrials.filter(t => t.task === "Stroop");
+        const flankerTrials = allTrials.filter(t => t.task === "Flanker");
+        
+        let cptMetrics = { mean: null, std: null, cv: null, omissions: 0, commissions: 0, dprime: null };
+        if (cptTrials.length > 0) {
+            const goCorrectRTs = cptTrials.filter(t => t.condition === "go" && t.accuracy === 1 && t.reaction_time_ms > 0).map(t => t.reaction_time_ms);
+            let meanRT = goCorrectRTs.length ? goCorrectRTs.reduce((a,b)=>a+b,0)/goCorrectRTs.length : null;
+            let stdRT = null;
+            if (goCorrectRTs.length > 1) {
+                stdRT = Math.sqrt(goCorrectRTs.map(v=>Math.pow(v-meanRT,2)).reduce((a,b)=>a+b,0)/(goCorrectRTs.length-1));
+            }
+            let cv = (meanRT && stdRT) ? stdRT/meanRT : null;
+            let omissions = cptTrials.filter(t => t.condition === "go" && t.accuracy === 0 && t.user_response === "omission").length;
+            let commissions = cptTrials.filter(t => t.condition === "nogo" && t.accuracy === 0).length;
+            
+            let totalGo = cptTrials.filter(t=>t.condition==="go").length;
+            let totalNoGo = cptTrials.filter(t=>t.condition==="nogo").length;
+            let hitRate = totalGo ? (cptTrials.filter(t=>t.condition==="go" && t.accuracy===1).length)/totalGo : 0.5;
+            let faRate = totalNoGo ? commissions/totalNoGo : 0.5;
+            hitRate = Math.min(Math.max(hitRate, 0.01), 0.99);
+            faRate = Math.min(Math.max(faRate, 0.01), 0.99);
+            let dprime = (Math.log(hitRate/(1-hitRate)) - Math.log(faRate/(1-faRate))) / 1.414;
+            
+            cptMetrics = { mean: meanRT, std: stdRT, cv: cv, omissions, commissions, dprime };
+        }
+        
+        let stroopInterference = null;
+        if (stroopTrials.length) {
+            const congruentRTs = stroopTrials.filter(t=>t.condition==="congruent" && t.accuracy===1).map(t=>t.reaction_time_ms);
+            const incongruentRTs = stroopTrials.filter(t=>t.condition==="incongruent" && t.accuracy===1).map(t=>t.reaction_time_ms);
+            let conMean = congruentRTs.length ? congruentRTs.reduce((a,b)=>a+b,0)/congruentRTs.length : 0;
+            let incMean = incongruentRTs.length ? incongruentRTs.reduce((a,b)=>a+b,0)/incongruentRTs.length : 0;
+            stroopInterference = incMean - conMean;
+        }
+        
+        let flankerEffect = null;
+        if (flankerTrials.length) {
+            const conRTs = flankerTrials.filter(t=>t.condition==="congruent" && t.accuracy===1).map(t=>t.reaction_time_ms);
+            const incRTs = flankerTrials.filter(t=>t.condition==="incongruent" && t.accuracy===1).map(t=>t.reaction_time_ms);
+            let conM = conRTs.length ? conRTs.reduce((a,b)=>a+b,0)/conRTs.length : 0;
+            let incM = incRTs.length ? incRTs.reduce((a,b)=>a+b,0)/incRTs.length : 0;
+            flankerEffect = incM - conM;
+        }
+        
+        return {
+            CPT_RT_mean: cptMetrics.mean,
+            CPT_RT_std: cptMetrics.std,
+            CPT_CV: cptMetrics.cv,
+            CPT_omission: cptMetrics.omissions,
+            CPT_commission: cptMetrics.commissions,
+            CPT_dprime: cptMetrics.dprime,
+            CPT_sustained_slope: 0,
+            Stroop_interference: stroopInterference,
+            Flanker_effect: flankerEffect
+        };
+    }
+    
+    function downloadFullCSV() {
+        if (allTrials.length === 0) {
+            alert("No data recorded. Please complete at least one task first.");
+            return;
+        }
+        
+        // Raw trials CSV
+        const trialHeaders = ["timestamp,task,condition,stimulus,correct_response,user_response,reaction_time_ms,accuracy"];
+        const trialRows = allTrials.map(t => 
+            `"${t.timestamp}",${t.task},${t.condition},"${t.stimulus.replace(/"/g, '""')}",${t.correct_response},${t.user_response},${t.reaction_time_ms},${t.accuracy}`
+        );
+        const trialCsv = trialHeaders.concat(trialRows).join("\n");
+        
+        // Summary features CSV
+        const summary = computeSummaryDataset();
+        const summaryHeaders = "CPT_RT_mean,CPT_RT_std,CPT_CV,CPT_omission,CPT_commission,CPT_dprime,CPT_sustained_slope,Stroop_interference,Flanker_effect";
+        let summaryRow = "";
+        if (summary) {
+            summaryRow = `${summary.CPT_RT_mean},${summary.CPT_RT_std},${summary.CPT_CV},${summary.CPT_omission},${summary.CPT_commission},${summary.CPT_dprime},${summary.CPT_sustained_slope},${summary.Stroop_interference},${summary.Flanker_effect}`;
+        } else {
+            summaryRow = ",,,,,,,,";
+        }
+        const summaryCsv = summaryHeaders + "\n" + summaryRow;
+        
+        // Download both files
+        const trialBlob = new Blob([trialCsv], {type: "text/csv"});
+        const summaryBlob = new Blob([summaryCsv], {type: "text/csv"});
+        
+        const trialUrl = URL.createObjectURL(trialBlob);
+        const summaryUrl = URL.createObjectURL(summaryBlob);
+        
+        const a1 = document.createElement("a");
+        a1.href = trialUrl;
+        a1.download = "attention_trials_raw.csv";
+        a1.click();
+        
+        setTimeout(() => {
+            const a2 = document.createElement("a");
+            a2.href = summaryUrl;
+            a2.download = "synthetic_attention_dataset.csv";
+            a2.click();
+            URL.revokeObjectURL(trialUrl);
+            URL.revokeObjectURL(summaryUrl);
+        }, 200);
+        
+        alert("✅ Downloaded: raw trial data + summary features");
+    }
+    
+    function resetAllData() {
+        if (taskActive) abortCurrentTask();
+        taskActive = false;
+        allTrials = [];
+        resetTaskUI();
+        feedbackMsg.innerText = "All data erased. Start a new task!";
+        progressInfo.innerText = "Data cleared. Select task & START.";
+        stimulusDisplay.innerText = "—";
+    }
+    
+    // ==================== TASK SWITCHING ====================
+    function switchTask(task) {
+        if (taskActive) {
+            alert("Please stop the current task first (click STOP TASK button).");
+            return false;
+        }
+        currentTask = task;
+        updateButtonPanel();
+        
+        let instructText = "";
+        if (currentTask === "cpt") {
+            instructText = "🔹 <strong>CPT Task:</strong> Press the SPACE button for any letter EXCEPT 'X'. Do NOT press when you see 'X'!";
+        } else if (currentTask === "stroop") {
+            instructText = "🎨 <strong>Stroop Task:</strong> Tap the COLOR BUTTON that matches the INK COLOR of the word above. Ignore what the word says!";
+        } else {
+            instructText = "⬅️➡️ <strong>Flanker Task:</strong> Tap LEFT or RIGHT arrow button matching the CENTRAL arrow direction. Ignore the surrounding arrows!";
+        }
+        instructionText.innerHTML = instructText;
+        resetTaskUI();
+        return true;
+    }
+    
+    // ==================== EVENT LISTENERS ====================
+    // Keyboard events for desktop
+    window.addEventListener("keydown", (e) => {
+        if (!taskActive) return;
+        
+        if (currentTask === "cpt" && (e.key === " " || e.key === "Space")) {
+            e.preventDefault();
+            handleResponse("space");
+        } else if ((currentTask === "stroop" || currentTask === "flanker") && e.key === "ArrowLeft") {
+            e.preventDefault();
+            handleResponse("left");
+        } else if ((currentTask === "stroop" || currentTask === "flanker") && e.key === "ArrowRight") {
+            e.preventDefault();
+            handleResponse("right");
+        }
+    });
+    
+    startBtn.addEventListener("click", startCurrentTask);
+    stopBtn.addEventListener("click", stopTask);
+    resetDataBtn.addEventListener("click", resetAllData);
+    downloadBtn.addEventListener("click", downloadFullCSV);
+    
+    // Task switcher
+    document.querySelectorAll(".task-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const task = btn.getAttribute("data-task");
+            if (switchTask(task)) {
+                document.querySelectorAll(".task-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+            }
+        });
+    });
+    
+    // Initialize CPT panel
+    updateButtonPanel();
+</script>
+</body>
+</html>
