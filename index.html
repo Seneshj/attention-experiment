@@ -29,7 +29,7 @@
             background: rgba(18, 25, 45, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 2rem;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
             overflow: hidden;
             padding: 1.5rem;
         }
@@ -149,87 +149,40 @@
             transform: scale(0.97);
         }
 
-        /* Task-specific button panels */
-        .button-panel {
+        /* Mobile touch button panel */
+        .touch-panel {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             justify-content: center;
             margin-top: 20px;
             flex-wrap: wrap;
         }
 
-        /* CPT Panel - Single Space Button */
-        .cpt-panel .response-btn {
-            background: #4f7df3;
+        .touch-btn {
+            background: #2a3a55;
             border: none;
             color: white;
-            padding: 20px 50px;
-            border-radius: 60px;
-            font-weight: bold;
-            font-size: 1.8rem;
-            cursor: pointer;
-            transition: all 0.1s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            touch-action: manipulation;
-        }
-
-        .cpt-panel .response-btn:active {
-            transform: scale(0.96);
-            background: #2e5fd3;
-        }
-
-        /* Stroop Panel - Two Color Buttons (Dynamic colors based on options) */
-        .stroop-panel {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .color-btn {
-            border: none;
-            padding: 20px 35px;
+            padding: 18px 28px;
             border-radius: 60px;
             font-weight: bold;
             font-size: 1.3rem;
             cursor: pointer;
             transition: all 0.1s ease;
+            min-width: 130px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             touch-action: manipulation;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            min-width: 140px;
         }
 
-        .color-btn:active {
-            transform: scale(0.96);
-        }
-
-        /* Flanker Panel - Arrow Buttons */
-        .flanker-panel {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-        }
-
-        .arrow-btn {
-            background: #2a3a55;
-            border: none;
-            color: white;
-            padding: 20px 40px;
-            border-radius: 60px;
-            font-weight: bold;
-            font-size: 2rem;
-            cursor: pointer;
-            transition: all 0.1s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            touch-action: manipulation;
-            min-width: 120px;
-        }
-
-        .arrow-btn:active {
+        .touch-btn:active {
             transform: scale(0.96);
             background: #4f7df3;
+        }
+
+        .space-btn {
+            background: #4f7df3;
+            font-size: 1.5rem;
+            padding: 18px 40px;
+            box-shadow: 0 0 20px rgba(79,125,243,0.4);
         }
 
         .download-area {
@@ -248,19 +201,11 @@
             background: #2e7a5e;
         }
 
-        .stop-btn {
-            background: #8b3a3a;
-        }
-
         footer {
             font-size: 0.7rem;
             text-align: center;
             margin-top: 20px;
             color: #6a7c9e;
-        }
-
-        .hidden {
-            display: none;
         }
 
         @media (max-width: 550px) {
@@ -271,19 +216,17 @@
                 font-size: 3.5rem;
                 padding: 0.8rem;
             }
-            .cpt-panel .response-btn {
-                padding: 15px 40px;
-                font-size: 1.5rem;
-            }
-            .color-btn {
-                padding: 15px 25px;
-                font-size: 1rem;
-                min-width: 110px;
-            }
-            .arrow-btn {
-                padding: 15px 30px;
-                font-size: 1.5rem;
+            .touch-btn {
+                padding: 14px 20px;
+                font-size: 1.1rem;
                 min-width: 100px;
+            }
+            .space-btn {
+                padding: 14px 30px;
+            }
+            .task-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -291,12 +234,12 @@
 <body>
 <div class="app-container">
     <h1>🧠 Attention Metrics Lab</h1>
-    <div class="sub">CPT · Stroop · Flanker | Touch Optimized</div>
+    <div class="sub">CPT · Stroop · Flanker | Touch Friendly</div>
 
     <div class="task-selector">
         <button class="task-btn" data-task="cpt">🎯 CPT (Go/No-Go)</button>
-        <button class="task-btn" data-task="stroop">🎨 Stroop Task</button>
-        <button class="task-btn" data-task="flanker">⬅️➡️ Flanker Task</button>
+        <button class="task-btn" data-task="stroop">🎨 Stroop</button>
+        <button class="task-btn" data-task="flanker">⬅️➡️ Flanker</button>
     </div>
 
     <div class="task-panel">
@@ -306,17 +249,20 @@
             <div class="feedback" id="feedbackMsg">Ready</div>
         </div>
         <div class="instructions" id="instructionText">
-            🔹 <strong>CPT:</strong> Press SPACE button for any letter EXCEPT 'X'<br>
-            🔹 <strong>Stroop:</strong> Tap the button that matches the INK COLOR (ignore the word)<br>
-            🔹 <strong>Flanker:</strong> Tap LEFT or RIGHT arrow matching the CENTRAL arrow
+            🔹 <strong>CPT:</strong> Press SPACE or tap SPACE button for any letter EXCEPT 'X'<br>
+            🔹 <strong>Stroop:</strong> Press LEFT/RIGHT arrow or tap buttons matching the INK color<br>
+            🔹 <strong>Flanker:</strong> Press LEFT/RIGHT arrow or tap buttons for CENTRAL arrow
         </div>
         
-        <!-- Dynamic Button Panel - Changes based on task -->
-        <div id="buttonPanel"></div>
+        <!-- Mobile touch buttons -->
+        <div class="touch-panel" id="touchPanel">
+            <button class="touch-btn" id="leftTouchBtn">⬅️ LEFT</button>
+            <button class="touch-btn space-btn" id="spaceTouchBtn">␣ SPACE</button>
+            <button class="touch-btn" id="rightTouchBtn">RIGHT ➡️</button>
+        </div>
         
         <div style="display: flex; gap: 12px; justify-content: center; margin-top: 12px;">
             <button class="control-btn" id="startBtn">▶ START TASK</button>
-            <button class="control-btn stop-btn" id="stopBtn">⏹️ STOP TASK</button>
             <button class="control-btn reset-btn" id="resetDataBtn">🗑 RESET DATA</button>
         </div>
     </div>
@@ -324,7 +270,7 @@
     <div class="download-area">
         <button class="control-btn download-btn" id="downloadCsvBtn">📥 DOWNLOAD FULL DATASET</button>
     </div>
-    <footer>✅ All responses automatically logged | Each task has custom buttons matching the experiment design</footer>
+    <footer>✅ All responses automatically logged | One-click download includes raw trials + summary features</footer>
 </div>
 
 <script>
@@ -338,70 +284,18 @@
     let currentTrialIndex = 0;
     let currentTaskName = "";
     let currentTimeout = null;
-    let currentStroopOptions = null; // Store current color options for Stroop
     
     // DOM elements
     const stimulusDisplay = document.getElementById("stimulusDisplay");
     const feedbackMsg = document.getElementById("feedbackMsg");
     const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
     const resetDataBtn = document.getElementById("resetDataBtn");
     const downloadBtn = document.getElementById("downloadCsvBtn");
     const progressInfo = document.getElementById("progressInfo");
     const instructionText = document.getElementById("instructionText");
-    const buttonPanel = document.getElementById("buttonPanel");
-    
-    // ==================== UI BUTTON GENERATION ====================
-    function updateButtonPanel() {
-        if (currentTask === "cpt") {
-            buttonPanel.innerHTML = `
-                <div class="button-panel cpt-panel">
-                    <button class="response-btn" id="cptSpaceBtn">␣ SPACE</button>
-                </div>
-            `;
-            document.getElementById("cptSpaceBtn")?.addEventListener("click", () => handleResponse("space"));
-        } 
-        else if (currentTask === "stroop") {
-            // Stroop buttons will be dynamically updated each trial
-            buttonPanel.innerHTML = `
-                <div class="button-panel stroop-panel" id="stroopButtons">
-                    <button class="color-btn" id="stroopLeftBtn">Loading...</button>
-                    <button class="color-btn" id="stroopRightBtn">Loading...</button>
-                </div>
-            `;
-        } 
-        else if (currentTask === "flanker") {
-            buttonPanel.innerHTML = `
-                <div class="button-panel flanker-panel">
-                    <button class="arrow-btn" id="flankerLeftBtn">⬅️ LEFT</button>
-                    <button class="arrow-btn" id="flankerRightBtn">RIGHT ➡️</button>
-                </div>
-            `;
-            document.getElementById("flankerLeftBtn")?.addEventListener("click", () => handleResponse("left"));
-            document.getElementById("flankerRightBtn")?.addEventListener("click", () => handleResponse("right"));
-        }
-    }
-    
-    // Update Stroop buttons with current trial's color options
-    function updateStroopButtons(leftColor, rightColor, leftText, rightText) {
-        const leftBtn = document.getElementById("stroopLeftBtn");
-        const rightBtn = document.getElementById("stroopRightBtn");
-        if (leftBtn && rightBtn) {
-            leftBtn.textContent = leftText || leftColor;
-            rightBtn.textContent = rightText || rightColor;
-            leftBtn.style.backgroundColor = leftColor;
-            rightBtn.style.backgroundColor = rightColor;
-            
-            // Remove old listeners and add new ones
-            const newLeftBtn = leftBtn.cloneNode(true);
-            const newRightBtn = rightBtn.cloneNode(true);
-            leftBtn.parentNode.replaceChild(newLeftBtn, leftBtn);
-            rightBtn.parentNode.replaceChild(newRightBtn, rightBtn);
-            
-            newLeftBtn.addEventListener("click", () => handleResponse("left"));
-            newRightBtn.addEventListener("click", () => handleResponse("right"));
-        }
-    }
+    const leftTouchBtn = document.getElementById("leftTouchBtn");
+    const rightTouchBtn = document.getElementById("rightTouchBtn");
+    const spaceTouchBtn = document.getElementById("spaceTouchBtn");
     
     // ==================== HELPER: Record Trial ====================
     function recordTrial(taskName, condition, stimulus, correctResp, userResp, rt, accuracy, extra = {}) {
@@ -453,9 +347,8 @@
     
     function generateStroopTrials(n = 16) {
         const colorNames = ["RED", "GREEN", "BLUE", "YELLOW"];
-        const colorHex = { "RED": "#ff5555", "GREEN": "#55ff55", "BLUE": "#5599ff", "YELLOW": "#ffff77" };
+        const colorMap = { "RED": "#ff5555", "GREEN": "#55ff55", "BLUE": "#5599ff", "YELLOW": "#ffff77" };
         let trials = [];
-        
         for (let i = 0; i < n; i++) {
             let condition = Math.random() < 0.5 ? "congruent" : "incongruent";
             let word = colorNames[Math.floor(Math.random() * colorNames.length)];
@@ -463,30 +356,15 @@
             while (condition === "incongruent" && inkColor === word) {
                 inkColor = colorNames[Math.floor(Math.random() * colorNames.length)];
             }
-            
-            // Create two button options: correct color and a random wrong color
-            let correctColor = inkColor;
-            let wrongColors = colorNames.filter(c => c !== correctColor);
-            let wrongColor = wrongColors[Math.floor(Math.random() * wrongColors.length)];
-            
-            // Randomize left/right position
-            let leftIsCorrect = Math.random() < 0.5;
-            let leftColor = leftIsCorrect ? correctColor : wrongColor;
-            let rightColor = leftIsCorrect ? wrongColor : correctColor;
-            let leftText = leftColor;
-            let rightText = rightColor;
-            
+            const leftColors = ["RED", "GREEN"];
+            const rightColors = ["BLUE", "YELLOW"];
+            let correctResp = leftColors.includes(inkColor) ? "left" : "right";
             trials.push({
                 type: condition,
                 word: word,
                 ink: inkColor,
-                inkColorHex: colorHex[inkColor],
-                correctColor: correctColor,
-                leftColor: leftColor,
-                rightColor: rightColor,
-                leftText: leftText,
-                rightText: rightText,
-                correctSide: leftIsCorrect ? "left" : "right"
+                correctResp: correctResp,
+                inkColorHex: colorMap[inkColor]
             });
         }
         return trials;
@@ -522,22 +400,11 @@
         taskActive = false;
     }
     
-    function stopTask() {
-        if (taskActive) {
-            abortCurrentTask();
-            taskActive = false;
-            feedbackMsg.innerText = "Task stopped by user.";
-            progressInfo.innerText = "Task stopped. Press START to begin again.";
-            stimulusDisplay.innerText = "—";
-        }
-    }
-    
     function resetTaskUI() {
         abortCurrentTask();
-        taskActive = false;
         stimulusDisplay.innerText = "—";
         feedbackMsg.innerText = "Ready";
-        progressInfo.innerText = "Select a task & press START.";
+        progressInfo.innerText = "Task stopped. Press START.";
     }
     
     function nextTrial() {
@@ -582,16 +449,13 @@
         else if (currentTaskName === "Stroop") {
             stimulusDisplay.innerText = trial.word;
             stimulusDisplay.style.color = trial.inkColorHex;
-            expectedResponse = trial.correctSide;
-            
-            // Update buttons with current trial's colors
-            updateStroopButtons(trial.leftColor, trial.rightColor, trial.leftText, trial.rightText);
+            expectedResponse = trial.correctResp;
             
             if (currentTimeout) clearTimeout(currentTimeout);
             currentTimeout = setTimeout(() => {
                 if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
                     let rtLate = performance.now() - trialStartTime;
-                    recordTrial("Stroop", trial.type, `${trial.word} (${trial.ink})`, trial.correctSide, "timeout", rtLate, 0, {});
+                    recordTrial("Stroop", trial.type, `${trial.word} (${trial.ink})`, trial.correctResp, "timeout", rtLate, 0, {});
                     currentTrialIndex++;
                     nextTrial();
                 }
@@ -613,7 +477,7 @@
             }, 1800);
         }
         
-        progressInfo.innerText = `${currentTaskName} | Trial ${currentTrialIndex+1}/${currentTrialsQueue.length} | ${trial.type.toUpperCase()}`;
+        progressInfo.innerText = `${currentTaskName} | Trial ${currentTrialIndex+1}/${currentTrialsQueue.length} | ${trial.type}`;
     }
     
     // ==================== RESPONSE HANDLER ====================
@@ -642,12 +506,7 @@
         // Stroop & Flanker
         if (responseKey === "left" || responseKey === "right") {
             const isCorrect = (responseKey === expectedResponse);
-            let stimulusDesc = "";
-            if (currentTaskName === "Stroop") {
-                stimulusDesc = `${currentTrial.word} (${currentTrial.ink})`;
-            } else {
-                stimulusDesc = currentTrial.stimulus;
-            }
+            const stimulusDesc = currentTaskName === "Stroop" ? `${currentTrial.word} (ink:${currentTrial.ink})` : currentTrial.stimulus;
             recordTrial(currentTaskName, currentTrial.type, stimulusDesc, expectedResponse, responseKey, rt, isCorrect ? 1 : 0, {});
             if (currentTimeout) clearTimeout(currentTimeout);
             currentTrialIndex++;
@@ -683,7 +542,7 @@
         nextTrial();
     }
     
-    // ==================== DATA SUMMARY ====================
+    // ==================== DATA SUMMARY (Synthetic Dataset Format) ====================
     function computeSummaryDataset() {
         if (allTrials.length === 0) return null;
         
@@ -758,7 +617,7 @@
         );
         const trialCsv = trialHeaders.concat(trialRows).join("\n");
         
-        // Summary features CSV
+        // Summary features CSV (matching synthetic_attention_dataset format)
         const summary = computeSummaryDataset();
         const summaryHeaders = "CPT_RT_mean,CPT_RT_std,CPT_CV,CPT_omission,CPT_commission,CPT_dprime,CPT_sustained_slope,Stroop_interference,Flanker_effect";
         let summaryRow = "";
@@ -790,7 +649,7 @@
             URL.revokeObjectURL(summaryUrl);
         }, 200);
         
-        alert("✅ Downloaded: raw trial data + summary features");
+        alert("✅ Downloaded: raw trial data + summary features (synthetic format)");
     }
     
     function resetAllData() {
@@ -803,63 +662,64 @@
         stimulusDisplay.innerText = "—";
     }
     
-    // ==================== TASK SWITCHING ====================
-    function switchTask(task) {
-        if (taskActive) {
-            alert("Please stop the current task first (click STOP TASK button).");
-            return false;
-        }
-        currentTask = task;
-        updateButtonPanel();
-        
-        let instructText = "";
-        if (currentTask === "cpt") {
-            instructText = "🔹 <strong>CPT Task:</strong> Press the SPACE button for any letter EXCEPT 'X'. Do NOT press when you see 'X'!";
-        } else if (currentTask === "stroop") {
-            instructText = "🎨 <strong>Stroop Task:</strong> Tap the COLOR BUTTON that matches the INK COLOR of the word above. Ignore what the word says!";
-        } else {
-            instructText = "⬅️➡️ <strong>Flanker Task:</strong> Tap LEFT or RIGHT arrow button matching the CENTRAL arrow direction. Ignore the surrounding arrows!";
-        }
-        instructionText.innerHTML = instructText;
-        resetTaskUI();
-        return true;
-    }
-    
     // ==================== EVENT LISTENERS ====================
-    // Keyboard events for desktop
+    // Keyboard events
     window.addEventListener("keydown", (e) => {
         if (!taskActive) return;
         
-        if (currentTask === "cpt" && (e.key === " " || e.key === "Space")) {
+        if (e.key === " " || e.key === "Space") {
             e.preventDefault();
             handleResponse("space");
-        } else if ((currentTask === "stroop" || currentTask === "flanker") && e.key === "ArrowLeft") {
+        } else if (e.key === "ArrowLeft") {
             e.preventDefault();
             handleResponse("left");
-        } else if ((currentTask === "stroop" || currentTask === "flanker") && e.key === "ArrowRight") {
+        } else if (e.key === "ArrowRight") {
             e.preventDefault();
             handleResponse("right");
         }
     });
     
-    startBtn.addEventListener("click", startCurrentTask);
-    stopBtn.addEventListener("click", stopTask);
+    // Touch buttons
+    leftTouchBtn.addEventListener("click", () => handleResponse("left"));
+    rightTouchBtn.addEventListener("click", () => handleResponse("right"));
+    spaceTouchBtn.addEventListener("click", () => handleResponse("space"));
+    
+    startBtn.addEventListener("click", () => {
+        if (taskActive) {
+            abortCurrentTask();
+            taskActive = false;
+            feedbackMsg.innerText = "Task stopped. Press START again.";
+        } else {
+            startCurrentTask();
+        }
+    });
+    
     resetDataBtn.addEventListener("click", resetAllData);
     downloadBtn.addEventListener("click", downloadFullCSV);
     
     // Task switcher
     document.querySelectorAll(".task-btn").forEach(btn => {
         btn.addEventListener("click", () => {
-            const task = btn.getAttribute("data-task");
-            if (switchTask(task)) {
-                document.querySelectorAll(".task-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
+            if (taskActive) {
+                alert("Please stop the current task first (press START to stop).");
+                return;
             }
+            document.querySelectorAll(".task-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentTask = btn.getAttribute("data-task");
+            
+            let instructText = "";
+            if (currentTask === "cpt") {
+                instructText = "🔹 CPT: Press SPACE or tap SPACE button for any letter EXCEPT 'X'. Don't press on X!";
+            } else if (currentTask === "stroop") {
+                instructText = "🎨 Stroop: Press LEFT/RIGHT or tap buttons matching the INK color (ignore the word meaning).";
+            } else {
+                instructText = "⬅️➡️ Flanker: Press LEFT/RIGHT or tap buttons matching the CENTRAL arrow direction.";
+            }
+            instructionText.innerHTML = instructText;
+            resetTaskUI();
         });
     });
-    
-    // Initialize CPT panel
-    updateButtonPanel();
 </script>
 </body>
 </html>
