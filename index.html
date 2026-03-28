@@ -306,7 +306,7 @@
     // ==================== CONFIGURATION ====================
     // ⚠️ REPLACE THIS WITH YOUR WEB APP URL FROM DEPLOYMENT!
     // Your Web App URL should look like: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
-    const GOOGLE_SHEET_URL = "https://script.google.com/u/0/home/projects/1UGKBVkRlLN6wz_5Vb8_0x12BfIv3Ow1_mYBN7p_NvV70Cb5dXaanYb0s/edit";
+    const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyYkCF4D491amd9_by_jzfLrGyL7BayTUIgN0LECxOabcLp334Olcx0NtvvEGkJiqD8yg/exec";
     
     // Your Google Sheet URL for reference (not used for saving)
     const SHEET_REF_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit";
@@ -361,7 +361,7 @@
             return true;
         }
         
-        if (GOOGLE_SHEET_URL === "https://script.google.com/u/0/home/projects/1UGKBVkRlLN6wz_5Vb8_0x12BfIv3Ow1_mYBN7p_NvV70Cb5dXaanYb0s/edit") {
+        if (GOOGLE_SHEET_URL === "https://script.google.com/macros/s/AKfycbyYkCF4D491amd9_by_jzfLrGyL7BayTUIgN0LECxOabcLp334Olcx0NtvvEGkJiqD8yg/exec") {
             saveStatus.innerHTML = "⚠️ Configure Web App URL first! Deploy your Apps Script as Web App.";
             saveStatus.className = "status-error";
             return false;
@@ -844,7 +844,7 @@
     document.querySelector(".task-btn[data-task='cpt']").classList.add("active");
     
     // Check if URL is configured
-    if (GOOGLE_SHEET_URL === "https://script.google.com/u/0/home/projects/1UGKBVkRlLN6wz_5Vb8_0x12BfIv3Ow1_mYBN7p_NvV70Cb5dXaanYb0s/edit") {
+    if (GOOGLE_SHEET_URL === "https://script.google.com/macros/s/AKfycbyYkCF4D491amd9_by_jzfLrGyL7BayTUIgN0LECxOabcLp334Olcx0NtvvEGkJiqD8yg/exec") {
         saveStatus.innerHTML = "⚠️ CONFIGURATION NEEDED: Deploy your Apps Script as Web App and paste the URL here!";
         saveStatus.className = "status-error";
     }
