@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Attention Metrics Lab - Auto-Save to attention_dataset</title>
+    <title>Attention Metrics Lab - Auto-Save to Google Sheet</title>
     <style>
         * {
             box-sizing: border-box;
@@ -263,7 +263,7 @@
 <body>
 <div class="app-container">
     <h1>🧠 Attention Metrics Lab</h1>
-    <div class="sub">Data saves AUTOMATICALLY to: <strong>attention_dataset</strong> (Google Sheet)</div>
+    <div class="sub">Data saves AUTOMATICALLY to your Google Sheet</div>
 
     <div class="task-selector">
         <button class="task-btn" data-task="cpt">🎯 CPT (50 trials)</button>
@@ -299,17 +299,16 @@
         </div>
     </div>
 
-    <footer>📊 Your Google Sheet: <strong>attention_dataset</strong> | Data saves automatically after each task</footer>
+    <footer>📊 Data automatically saves to: <strong>attention_dataset</strong> (Google Sheet)</footer>
 </div>
 
 <script>
-    // ==================== CONFIGURATION ====================
-    // ⚠️ REPLACE THIS WITH YOUR WEB APP URL FROM DEPLOYMENT!
-    // Your Web App URL should look like: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
-    const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyYkCF4D491amd9_by_jzfLrGyL7BayTUIgN0LECxOabcLp334Olcx0NtvvEGkJiqD8yg/exec";
+    // ==================== YOUR CONFIGURATION ====================
+    // Web App URL (for saving data) - CORRECT URL
+    const GOOGLE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxZGgUK26Vk88ZPEDubYHTj1WVmft4NrSe58Jc8ddOchKMxw1e_mDRAOT9RMt5EB_YbNg/exec";
     
-    // Your Google Sheet URL for reference (not used for saving)
-    const SHEET_REF_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit";
+    // Your Google Sheet URL (for reference only)
+    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit";
     
     // Generate unique session ID for this participant
     const SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
@@ -361,20 +360,15 @@
             return true;
         }
         
-        if (GOOGLE_SHEET_URL === "https://script.google.com/macros/s/AKfycbyYkCF4D491amd9_by_jzfLrGyL7BayTUIgN0LECxOabcLp334Olcx0NtvvEGkJiqD8yg/exec") {
-            saveStatus.innerHTML = "⚠️ Configure Web App URL first! Deploy your Apps Script as Web App.";
-            saveStatus.className = "status-error";
-            return false;
-        }
-        
         const metrics = computeAllMetrics();
         metrics.session_id = SESSION_ID;
         
-        saveStatus.innerHTML = "📤 Auto-saving to attention_dataset...";
+        saveStatus.innerHTML = "📤 Auto-saving to Google Sheet...";
         saveStatus.className = "status-saving";
         
         try {
-            const response = await fetch(GOOGLE_SHEET_URL, {
+            // Send data to Google Apps Script Web App
+            const response = await fetch(GOOGLE_WEBAPP_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: {
@@ -393,7 +387,7 @@
             return true;
             
         } catch (error) {
-            saveStatus.innerHTML = "❌ Save failed. Check Web App URL.";
+            saveStatus.innerHTML = "❌ Save failed. Check your internet connection.";
             saveStatus.className = "status-error";
             console.error("Save error:", error);
             return false;
@@ -843,11 +837,9 @@
     updateButtonPanel();
     document.querySelector(".task-btn[data-task='cpt']").classList.add("active");
     
-    // Check if URL is configured
-    if (GOOGLE_SHEET_URL === "https://script.google.com/macros/s/AKfycbyYkCF4D491amd9_by_jzfLrGyL7BayTUIgN0LECxOabcLp334Olcx0NtvvEGkJiqD8yg/exec") {
-        saveStatus.innerHTML = "⚠️ CONFIGURATION NEEDED: Deploy your Apps Script as Web App and paste the URL here!";
-        saveStatus.className = "status-error";
-    }
+    // Show that URL is configured
+    saveStatus.innerHTML = "✅ Ready! Data will auto-save to attention_dataset when tasks complete.";
+    saveStatus.className = "status-saved";
 </script>
 </body>
 </html>
