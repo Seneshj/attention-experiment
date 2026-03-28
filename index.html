@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Attention Metrics Lab - Auto-Save Data Collection</title>
+    <title>Attention Metrics Lab - Auto-Save to attention_dataset</title>
     <style>
         * {
             box-sizing: border-box;
@@ -243,20 +243,9 @@
             text-align: center;
         }
 
-        .status-saved {
-            color: #88ff88;
-            font-size: 0.85rem;
-        }
-
-        .status-saving {
-            color: #ffaa88;
-            font-size: 0.85rem;
-        }
-
-        .status-error {
-            color: #ff8888;
-            font-size: 0.85rem;
-        }
+        .status-saved { color: #88ff88; font-size: 0.85rem; }
+        .status-saving { color: #ffaa88; font-size: 0.85rem; }
+        .status-error { color: #ff8888; font-size: 0.85rem; }
 
         .reset-btn { background: #7a3e2e; }
         .stop-btn { background: #8b3a3a; }
@@ -274,7 +263,7 @@
 <body>
 <div class="app-container">
     <h1>🧠 Attention Metrics Lab</h1>
-    <div class="sub">Data saves AUTOMATICALLY to your private Google Sheet</div>
+    <div class="sub">Data saves AUTOMATICALLY to: <strong>attention_dataset</strong> (Google Sheet)</div>
 
     <div class="task-selector">
         <button class="task-btn" data-task="cpt">🎯 CPT (50 trials)</button>
@@ -310,13 +299,17 @@
         </div>
     </div>
 
-    <footer>✅ Complete all tasks → Data saves automatically to Google Sheet</footer>
+    <footer>📊 Your Google Sheet: <strong>attention_dataset</strong> | Data saves automatically after each task</footer>
 </div>
 
 <script>
     // ==================== CONFIGURATION ====================
-    // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT URL
-    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit?usp=sharing";
+    // ⚠️ REPLACE THIS WITH YOUR WEB APP URL FROM DEPLOYMENT!
+    // Your Web App URL should look like: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
+    const GOOGLE_SHEET_URL = "https://script.google.com/u/0/home/projects/1UGKBVkRlLN6wz_5Vb8_0x12BfIv3Ow1_mYBN7p_NvV70Cb5dXaanYb0s/edit";
+    
+    // Your Google Sheet URL for reference (not used for saving)
+    const SHEET_REF_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit";
     
     // Generate unique session ID for this participant
     const SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
@@ -368,8 +361,8 @@
             return true;
         }
         
-        if (GOOGLE_SHEET_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
-            saveStatus.innerHTML = "⚠️ Configure Google Sheets URL first (see instructions)";
+        if (GOOGLE_SHEET_URL === "https://script.google.com/u/0/home/projects/1UGKBVkRlLN6wz_5Vb8_0x12BfIv3Ow1_mYBN7p_NvV70Cb5dXaanYb0s/edit") {
+            saveStatus.innerHTML = "⚠️ Configure Web App URL first! Deploy your Apps Script as Web App.";
             saveStatus.className = "status-error";
             return false;
         }
@@ -377,7 +370,7 @@
         const metrics = computeAllMetrics();
         metrics.session_id = SESSION_ID;
         
-        saveStatus.innerHTML = "📤 Auto-saving data to Google Sheet...";
+        saveStatus.innerHTML = "📤 Auto-saving to attention_dataset...";
         saveStatus.className = "status-saving";
         
         try {
@@ -391,24 +384,23 @@
             });
             
             dataSaved = true;
-            saveStatus.innerHTML = "✅ Data saved automatically to Google Sheet!";
+            saveStatus.innerHTML = "✅ Data saved to attention_dataset!";
             saveStatus.className = "status-saved";
             
-            // Also store in localStorage to prevent duplicate saves
             localStorage.setItem('attention_data_saved', 'true');
             localStorage.setItem('attention_session_id', SESSION_ID);
             
             return true;
             
         } catch (error) {
-            saveStatus.innerHTML = "❌ Auto-save failed. Check Google Sheet URL.";
+            saveStatus.innerHTML = "❌ Save failed. Check Web App URL.";
             saveStatus.className = "status-error";
             console.error("Save error:", error);
             return false;
         }
     }
     
-    // Check if already saved from previous session
+    // Check if already saved
     if (localStorage.getItem('attention_data_saved') === 'true') {
         dataSaved = true;
         saveStatus.innerHTML = "✅ Data already saved for this session!";
@@ -530,20 +522,19 @@
             let mins = Math.floor(remaining / 60);
             let secs = remaining % 60;
             timerDisplay.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
-            progressInfo.innerHTML = `${currentTaskName} | Time remaining: ${mins}:${secs.toString().padStart(2,'0')}`;
+            progressInfo.innerHTML = `${currentTaskName} | Time: ${mins}:${secs.toString().padStart(2,'0')} left`;
         }
     }
     
     async function endTimedTask() {
         stopTimer();
         taskActive = false;
-        feedbackMsg.innerText = "✅ Time's up! Task completed.";
+        feedbackMsg.innerText = "✅ Task completed!";
         progressInfo.innerText = "Task finished! Saving data...";
         stimulusDisplay.innerText = "✅";
         timerDisplay.textContent = "Done!";
         if (currentTimeout) clearTimeout(currentTimeout);
         
-        // AUTO-SAVE when task completes
         await autoSaveToSheet();
     }
     
@@ -616,7 +607,7 @@
         timerDisplay.textContent = "1:30";
         
         feedbackMsg.innerText = `${taskName} Running... 90 seconds`;
-        progressInfo.innerText = `${taskName} | Time remaining: 1:30`;
+        progressInfo.innerText = `${taskName} | 90 seconds remaining`;
         
         showNextTimedTrial();
     }
@@ -631,7 +622,6 @@
                 stimulusDisplay.innerText = "✅";
                 timerDisplay.textContent = "Done!";
                 
-                // AUTO-SAVE when CPT completes
                 await autoSaveToSheet();
             }
             return;
@@ -854,8 +844,8 @@
     document.querySelector(".task-btn[data-task='cpt']").classList.add("active");
     
     // Check if URL is configured
-    if (GOOGLE_SHEET_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
-        saveStatus.innerHTML = "⚠️ CONFIGURATION NEEDED: Replace YOUR_GOOGLE_APPS_SCRIPT_URL_HERE with your Google Apps Script Web App URL";
+    if (GOOGLE_SHEET_URL === "https://script.google.com/u/0/home/projects/1UGKBVkRlLN6wz_5Vb8_0x12BfIv3Ow1_mYBN7p_NvV70Cb5dXaanYb0s/edit") {
+        saveStatus.innerHTML = "⚠️ CONFIGURATION NEEDED: Deploy your Apps Script as Web App and paste the URL here!";
         saveStatus.className = "status-error";
     }
 </script>
