@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Attention Metrics Lab - Full Research Suite</title>
+    <title>Attention Metrics Lab - Auto-Save Data Collection</title>
     <style>
         * {
             box-sizing: border-box;
@@ -235,18 +235,31 @@
             background: #4f7df3;
         }
 
-        .download-area {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 20px;
-            flex-wrap: wrap;
+        .status-area {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 12px;
+            background: #1a2340;
+            text-align: center;
+        }
+
+        .status-saved {
+            color: #88ff88;
+            font-size: 0.85rem;
+        }
+
+        .status-saving {
+            color: #ffaa88;
+            font-size: 0.85rem;
+        }
+
+        .status-error {
+            color: #ff8888;
+            font-size: 0.85rem;
         }
 
         .reset-btn { background: #7a3e2e; }
-        .download-btn { background: #2e7a5e; }
         .stop-btn { background: #8b3a3a; }
-        .hidden { display: none; }
 
         @media (max-width: 550px) {
             .app-container { padding: 1rem; }
@@ -261,7 +274,7 @@
 <body>
 <div class="app-container">
     <h1>🧠 Attention Metrics Lab</h1>
-    <div class="sub">CPT (50 trials) · Stroop (90s) · Flanker (90s)</div>
+    <div class="sub">Data saves AUTOMATICALLY to your private Google Sheet</div>
 
     <div class="task-selector">
         <button class="task-btn" data-task="cpt">🎯 CPT (50 trials)</button>
@@ -289,24 +302,31 @@
         <div style="display: flex; gap: 12px; justify-content: center; margin-top: 12px;">
             <button class="control-btn" id="startBtn">▶ START TASK</button>
             <button class="control-btn stop-btn" id="stopBtn">⏹️ STOP</button>
-            <button class="control-btn reset-btn" id="resetDataBtn">🗑 RESET DATA</button>
+            <button class="control-btn reset-btn" id="resetDataBtn">🗑 RESET</button>
+        </div>
+        
+        <div class="status-area" id="statusArea">
+            <div id="saveStatus">✅ Data will save automatically when tasks complete</div>
         </div>
     </div>
 
-    <div class="download-area">
-        <button class="control-btn download-btn" id="downloadCsvBtn">📥 DOWNLOAD FULL DATASET</button>
-    </div>
-    <footer>✅ Complete all tasks → Download CSV with all metrics (CPT_RT_mean, CPT_omission, Stroop_interference, Flanker_effect, etc.)</footer>
+    <footer>✅ Complete all tasks → Data saves automatically to your Google Sheet</footer>
 </div>
 
 <script>
+    // ==================== CONFIGURATION ====================
+    // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT URL
+    const GOOGLE_SHEET_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+    
+    // Generate unique session ID for this participant
+    const SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+    
     // ==================== TASK PARAMETERS ====================
     const CPT_TOTAL_TRIALS = 50;
     const CPT_STIMULUS_DURATION = 500;
     const CPT_INTER_STIMULUS_INTERVAL = 1000;
     const CPT_TARGET_PROBABILITY = 0.8;
-    
-    const TASK_DURATION = 90; // seconds for Stroop and Flanker
+    const TASK_DURATION = 90;
     
     // ==================== GLOBAL DATA ====================
     let allTrials = [];
@@ -320,19 +340,80 @@
     let currentTimeout = null;
     let taskStartTime = 0;
     let timerInterval = null;
-    let isWaitingForNextTrial = false;
     let nextTrialTimeout = null;
+    let dataSaved = false;
     
     const stimulusDisplay = document.getElementById("stimulusDisplay");
     const feedbackMsg = document.getElementById("feedbackMsg");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
     const resetDataBtn = document.getElementById("resetDataBtn");
-    const downloadBtn = document.getElementById("downloadCsvBtn");
     const progressInfo = document.getElementById("progressInfo");
     const instructionText = document.getElementById("instructionText");
     const timerDisplay = document.getElementById("timerDisplay");
     const buttonPanel = document.getElementById("buttonPanel");
+    const saveStatus = document.getElementById("saveStatus");
+    
+    // ==================== AUTO-SAVE FUNCTION ====================
+    async function autoSaveToSheet() {
+        if (allTrials.length === 0) {
+            saveStatus.innerHTML = "⚠️ No data to save. Complete a task first.";
+            saveStatus.className = "status-error";
+            return false;
+        }
+        
+        if (dataSaved) {
+            saveStatus.innerHTML = "✅ Data already saved for this session!";
+            saveStatus.className = "status-saved";
+            return true;
+        }
+        
+        if (GOOGLE_SHEET_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+            saveStatus.innerHTML = "⚠️ Configure Google Sheets URL first (see instructions)";
+            saveStatus.className = "status-error";
+            return false;
+        }
+        
+        const metrics = computeAllMetrics();
+        metrics.session_id = SESSION_ID;
+        
+        saveStatus.innerHTML = "📤 Auto-saving data to Google Sheet...";
+        saveStatus.className = "status-saving";
+        
+        try {
+            const response = await fetch(GOOGLE_SHEET_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(metrics)
+            });
+            
+            dataSaved = true;
+            saveStatus.innerHTML = "✅ Data saved automatically to Google Sheet!";
+            saveStatus.className = "status-saved";
+            
+            // Also store in localStorage to prevent duplicate saves
+            localStorage.setItem('attention_data_saved', 'true');
+            localStorage.setItem('attention_session_id', SESSION_ID);
+            
+            return true;
+            
+        } catch (error) {
+            saveStatus.innerHTML = "❌ Auto-save failed. Check your Google Sheet URL.";
+            saveStatus.className = "status-error";
+            console.error("Save error:", error);
+            return false;
+        }
+    }
+    
+    // Check if already saved from previous session
+    if (localStorage.getItem('attention_data_saved') === 'true') {
+        dataSaved = true;
+        saveStatus.innerHTML = "✅ Data already saved for this session!";
+        saveStatus.className = "status-saved";
+    }
     
     // ==================== UI BUTTON GENERATION ====================
     function updateButtonPanel() {
@@ -453,28 +534,31 @@
         }
     }
     
-    function endTimedTask() {
+    async function endTimedTask() {
         stopTimer();
         taskActive = false;
         feedbackMsg.innerText = "✅ Time's up! Task completed.";
-        progressInfo.innerText = "Task finished! Download your data.";
+        progressInfo.innerText = "Task finished! Saving data...";
         stimulusDisplay.innerText = "✅";
         timerDisplay.textContent = "Done!";
         if (currentTimeout) clearTimeout(currentTimeout);
+        
+        // AUTO-SAVE when task completes
+        await autoSaveToSheet();
     }
     
-    // ==================== TIMED TASK (Stroop & Flanker) ====================
+    // ==================== TIMED TASK ====================
+    let currentTimedTrial = null;
+    
     function showNextTimedTrial() {
         if (!taskActive) return;
         
-        // Check if time is up
         let elapsed = (Date.now() - taskStartTime) / 1000;
         if (elapsed >= TASK_DURATION) {
             endTimedTask();
             return;
         }
         
-        // Generate and show next trial
         const trial = currentTaskName === "Stroop" ? generateStroopTrial() : generateFlankerTrial();
         trialStartTime = performance.now();
         
@@ -489,27 +573,23 @@
             expectedResponse = trial.correctResp;
         }
         
-        // Store trial data for response
-        window.currentTimedTrial = trial;
+        currentTimedTrial = trial;
         
-        // Set timeout for no response
         if (currentTimeout) clearTimeout(currentTimeout);
         currentTimeout = setTimeout(() => {
-            if (taskActive && window.currentTimedTrial === trial) {
+            if (taskActive && currentTimedTrial === trial) {
                 let rt = performance.now() - trialStartTime;
                 let stimulusDesc = currentTaskName === "Stroop" ? `${trial.word} (${trial.ink})` : trial.stimulus;
                 recordTrial(currentTaskName, trial.type, stimulusDesc, expectedResponse, "timeout", rt, 0);
-                // Schedule next trial after short pause
                 nextTrialTimeout = setTimeout(() => showNextTimedTrial(), 300);
             }
         }, 2000);
     }
     
     function handleTimedResponse(responseKey) {
-        if (!taskActive) return false;
-        if (!window.currentTimedTrial) return false;
+        if (!taskActive || !currentTimedTrial) return false;
         
-        const trial = window.currentTimedTrial;
+        const trial = currentTimedTrial;
         const rt = performance.now() - trialStartTime;
         
         if (responseKey === "left" || responseKey === "right") {
@@ -518,8 +598,7 @@
             let stimulusDesc = currentTaskName === "Stroop" ? `${trial.word} (${trial.ink})` : trial.stimulus;
             recordTrial(currentTaskName, trial.type, stimulusDesc, expectedResponse, responseKey, rt, isCorrect);
             
-            // Schedule next trial after short pause
-            window.currentTimedTrial = null;
+            currentTimedTrial = null;
             if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
             nextTrialTimeout = setTimeout(() => showNextTimedTrial(), 300);
             return true;
@@ -531,16 +610,14 @@
         currentTaskName = taskName;
         taskActive = true;
         taskStartTime = Date.now();
-        window.currentTimedTrial = null;
+        currentTimedTrial = null;
         
-        // Start timer
         timerInterval = setInterval(() => updateTimer(), 100);
         timerDisplay.textContent = "1:30";
         
         feedbackMsg.innerText = `${taskName} Running... 90 seconds`;
         progressInfo.innerText = `${taskName} | Time remaining: 1:30`;
         
-        // Start first trial
         showNextTimedTrial();
     }
     
@@ -550,9 +627,12 @@
             if (currentTrialIndex >= currentTrialsQueue.length) {
                 feedbackMsg.innerText = "🎉 CPT Completed! 50 trials done!";
                 taskActive = false;
-                progressInfo.innerText = "CPT finished! Select next task.";
+                progressInfo.innerText = "CPT finished! Saving data...";
                 stimulusDisplay.innerText = "✅";
                 timerDisplay.textContent = "Done!";
+                
+                // AUTO-SAVE when CPT completes
+                await autoSaveToSheet();
             }
             return;
         }
@@ -575,7 +655,6 @@
                 recordTrial("CPT", trial.type, trial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
                 currentTrialIndex++;
                 
-                // Clear stimulus and schedule next trial
                 stimulusDisplay.innerText = "—";
                 setTimeout(() => { runCPTTrial(); }, CPT_INTER_STIMULUS_INTERVAL);
             }
@@ -625,12 +704,11 @@
     }
     
     function startCurrentTask() {
-        // Stop any ongoing task
         stopTimer();
         if (currentTimeout) clearTimeout(currentTimeout);
         if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
         taskActive = false;
-        window.currentTimedTrial = null;
+        currentTimedTrial = null;
         
         if (currentTask === "cpt") {
             startCPT();
@@ -648,7 +726,7 @@
         if (currentTimeout) clearTimeout(currentTimeout);
         if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
         taskActive = false;
-        window.currentTimedTrial = null;
+        currentTimedTrial = null;
         feedbackMsg.innerText = "Task stopped.";
         progressInfo.innerText = "Task stopped. Press START to begin again.";
         stimulusDisplay.innerText = "—";
@@ -661,7 +739,6 @@
         const stroopTrials = allTrials.filter(t => t.task === "Stroop");
         const flankerTrials = allTrials.filter(t => t.task === "Flanker");
         
-        // CPT Metrics
         let cptMetrics = { mean: null, std: null, cv: null, omissions: 0, commissions: 0, dprime: null, sustained_slope: 0 };
         if (cptTrials.length > 0) {
             const goCorrectRTs = cptTrials.filter(t => t.condition === "go" && t.accuracy === 1 && t.reaction_time_ms > 0).map(t => t.reaction_time_ms);
@@ -685,7 +762,6 @@
             cptMetrics = { mean: meanRT, std: stdRT, cv: cv, omissions, commissions, dprime, sustained_slope: 0 };
         }
         
-        // Stroop Metrics
         let stroopInterference = null;
         if (stroopTrials.length) {
             const congruentRTs = stroopTrials.filter(t=>t.condition==="congruent" && t.accuracy===1).map(t=>t.reaction_time_ms);
@@ -695,7 +771,6 @@
             stroopInterference = incMean - conMean;
         }
         
-        // Flanker Metrics
         let flankerEffect = null;
         if (flankerTrials.length) {
             const conRTs = flankerTrials.filter(t=>t.condition==="congruent" && t.accuracy===1).map(t=>t.reaction_time_ms);
@@ -718,56 +793,19 @@
         };
     }
     
-    function downloadFullCSV() {
-        if (allTrials.length === 0) {
-            alert("No data recorded. Please complete at least one task first.");
-            return;
-        }
-        
-        const metrics = computeAllMetrics();
-        
-        // Summary CSV
-        const summaryHeaders = "CPT_RT_mean,CPT_RT_std,CPT_CV,CPT_omission,CPT_commission,CPT_dprime,CPT_sustained_slope,Stroop_interference,Flanker_effect";
-        const summaryRow = `${metrics.CPT_RT_mean},${metrics.CPT_RT_std},${metrics.CPT_CV},${metrics.CPT_omission},${metrics.CPT_commission},${metrics.CPT_dprime},${metrics.CPT_sustained_slope},${metrics.Stroop_interference},${metrics.Flanker_effect}`;
-        const summaryCsv = summaryHeaders + "\n" + summaryRow;
-        
-        // Raw trials CSV
-        const trialHeaders = ["timestamp,task,condition,stimulus,correct_response,user_response,reaction_time_ms,accuracy"];
-        const trialRows = allTrials.map(t => `"${t.timestamp}",${t.task},${t.condition},"${t.stimulus.replace(/"/g, '""')}",${t.correct_response},${t.user_response},${t.reaction_time_ms},${t.accuracy}`);
-        const trialCsv = trialHeaders.concat(trialRows).join("\n");
-        
-        // Download both files
-        const summaryBlob = new Blob([summaryCsv], {type: "text/csv"});
-        const trialBlob = new Blob([trialCsv], {type: "text/csv"});
-        
-        const summaryUrl = URL.createObjectURL(summaryBlob);
-        const trialUrl = URL.createObjectURL(trialBlob);
-        
-        const a1 = document.createElement("a");
-        a1.href = summaryUrl;
-        a1.download = "synthetic_attention_dataset.csv";
-        a1.click();
-        
-        setTimeout(() => {
-            const a2 = document.createElement("a");
-            a2.href = trialUrl;
-            a2.download = "attention_trials_raw.csv";
-            a2.click();
-            URL.revokeObjectURL(summaryUrl);
-            URL.revokeObjectURL(trialUrl);
-        }, 200);
-        
-        alert("✅ Downloaded: synthetic_attention_dataset.csv + attention_trials_raw.csv");
-    }
-    
     function resetAllData() {
         stopTask();
         allTrials = [];
         currentTrialIndex = 0;
+        dataSaved = false;
+        localStorage.removeItem('attention_data_saved');
+        localStorage.removeItem('attention_session_id');
         feedbackMsg.innerText = "All data erased. Start a new task!";
         progressInfo.innerText = "Data cleared. Select task & START.";
         stimulusDisplay.innerText = "—";
         timerDisplay.textContent = "Ready";
+        saveStatus.innerHTML = "Data cleared. New session will auto-save when tasks complete.";
+        saveStatus.className = "";
     }
     
     function switchTask(task) {
@@ -801,7 +839,6 @@
     startBtn.addEventListener("click", startCurrentTask);
     stopBtn.addEventListener("click", stopTask);
     resetDataBtn.addEventListener("click", resetAllData);
-    downloadBtn.addEventListener("click", downloadFullCSV);
     
     document.querySelectorAll(".task-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -815,6 +852,12 @@
     
     updateButtonPanel();
     document.querySelector(".task-btn[data-task='cpt']").classList.add("active");
+    
+    // Check if URL is configured
+    if (GOOGLE_SHEET_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+        saveStatus.innerHTML = "⚠️ CONFIGURATION NEEDED: Replace YOUR_GOOGLE_APPS_SCRIPT_URL_HERE with your Google Apps Script Web App URL";
+        saveStatus.className = "status-error";
+    }
 </script>
 </body>
 </html>
