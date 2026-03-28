@@ -134,12 +134,13 @@
 
         .timer-display {
             background: #00000066;
-            padding: 5px 12px;
-            border-radius: 30px;
-            font-size: 0.9rem;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 1.2rem;
             font-weight: bold;
             display: inline-block;
             margin-bottom: 10px;
+            font-family: monospace;
         }
 
         .control-btn {
@@ -178,6 +179,10 @@
             cursor: pointer;
             transition: all 0.1s ease;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .cpt-panel .response-btn:active {
+            transform: scale(0.96);
         }
 
         .stroop-panel {
@@ -249,6 +254,7 @@
             .cpt-panel .response-btn { padding: 15px 40px; font-size: 1.5rem; }
             .color-btn { padding: 15px 25px; font-size: 1rem; min-width: 110px; }
             .arrow-btn { padding: 15px 30px; font-size: 1.5rem; min-width: 100px; }
+            .timer-display { font-size: 1rem; padding: 6px 16px; }
         }
     </style>
 </head>
@@ -274,8 +280,8 @@
         </div>
         <div class="instructions" id="instructionText">
             🔹 <strong>CPT:</strong> Press SPACE for any letter EXCEPT 'X' (50 trials, 80% Go)<br>
-            🔹 <strong>Stroop:</strong> Tap the COLOR button matching the INK color (90 seconds)<br>
-            🔹 <strong>Flanker:</strong> Tap LEFT/RIGHT arrow matching CENTRAL arrow (90 seconds)
+            🔹 <strong>Stroop:</strong> Tap the COLOR button matching the INK color (90 seconds continuous)<br>
+            🔹 <strong>Flanker:</strong> Tap LEFT/RIGHT arrow matching CENTRAL arrow (90 seconds continuous)
         </div>
         
         <div id="buttonPanel"></div>
@@ -283,7 +289,7 @@
         <div style="display: flex; gap: 12px; justify-content: center; margin-top: 12px;">
             <button class="control-btn" id="startBtn">▶ START TASK</button>
             <button class="control-btn stop-btn" id="stopBtn">⏹️ STOP</button>
-            <button class="control-btn reset-btn" id="resetDataBtn">🗑 RESET</button>
+            <button class="control-btn reset-btn" id="resetDataBtn">🗑 RESET DATA</button>
         </div>
     </div>
 
@@ -314,6 +320,8 @@
     let currentTimeout = null;
     let taskStartTime = 0;
     let timerInterval = null;
+    let isWaitingForNextTrial = false;
+    let nextTrialTimeout = null;
     
     const stimulusDisplay = document.getElementById("stimulusDisplay");
     const feedbackMsg = document.getElementById("feedbackMsg");
@@ -423,9 +431,11 @@
         return { type: condition, stimulus: stimulus, correctResp: central === "<" ? "left" : "right" };
     }
     
-    // ==================== TASK CONTROL ====================
+    // ==================== TIMER FUNCTIONS ====================
     function stopTimer() {
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        if (nextTrialTimeout) { clearTimeout(nextTrialTimeout); nextTrialTimeout = null; }
+        if (currentTimeout) { clearTimeout(currentTimeout); currentTimeout = null; }
     }
     
     function updateTimer() {
@@ -434,28 +444,107 @@
         let remaining = TASK_DURATION - elapsed;
         if (remaining <= 0) {
             timerDisplay.textContent = "0:00";
-            stopTask();
-            feedbackMsg.innerText = "✅ Time's up! Task completed.";
+            endTimedTask();
         } else {
             let mins = Math.floor(remaining / 60);
             let secs = remaining % 60;
             timerDisplay.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
+            progressInfo.innerHTML = `${currentTaskName} | Time remaining: ${mins}:${secs.toString().padStart(2,'0')}`;
         }
     }
     
-    function stopTask() {
+    function endTimedTask() {
         stopTimer();
-        if (currentTimeout) clearTimeout(currentTimeout);
         taskActive = false;
-        if (currentTaskName === "Stroop" || currentTaskName === "Flanker") {
-            feedbackMsg.innerText = "Task completed! Download your data.";
-            progressInfo.innerText = "Task finished!";
-            stimulusDisplay.innerText = "✅";
-        } else {
-            feedbackMsg.innerText = "Task stopped.";
-        }
+        feedbackMsg.innerText = "✅ Time's up! Task completed.";
+        progressInfo.innerText = "Task finished! Download your data.";
+        stimulusDisplay.innerText = "✅";
+        timerDisplay.textContent = "Done!";
+        if (currentTimeout) clearTimeout(currentTimeout);
     }
     
+    // ==================== TIMED TASK (Stroop & Flanker) ====================
+    function showNextTimedTrial() {
+        if (!taskActive) return;
+        
+        // Check if time is up
+        let elapsed = (Date.now() - taskStartTime) / 1000;
+        if (elapsed >= TASK_DURATION) {
+            endTimedTask();
+            return;
+        }
+        
+        // Generate and show next trial
+        const trial = currentTaskName === "Stroop" ? generateStroopTrial() : generateFlankerTrial();
+        trialStartTime = performance.now();
+        
+        if (currentTaskName === "Stroop") {
+            stimulusDisplay.innerText = trial.word;
+            stimulusDisplay.style.color = trial.inkColorHex;
+            expectedResponse = trial.correctSide;
+            updateStroopButtons(trial.leftColor, trial.rightColor, null, null);
+        } else {
+            stimulusDisplay.innerText = trial.stimulus;
+            stimulusDisplay.style.color = "white";
+            expectedResponse = trial.correctResp;
+        }
+        
+        // Store trial data for response
+        window.currentTimedTrial = trial;
+        
+        // Set timeout for no response
+        if (currentTimeout) clearTimeout(currentTimeout);
+        currentTimeout = setTimeout(() => {
+            if (taskActive && window.currentTimedTrial === trial) {
+                let rt = performance.now() - trialStartTime;
+                let stimulusDesc = currentTaskName === "Stroop" ? `${trial.word} (${trial.ink})` : trial.stimulus;
+                recordTrial(currentTaskName, trial.type, stimulusDesc, expectedResponse, "timeout", rt, 0);
+                // Schedule next trial after short pause
+                nextTrialTimeout = setTimeout(() => showNextTimedTrial(), 300);
+            }
+        }, 2000);
+    }
+    
+    function handleTimedResponse(responseKey) {
+        if (!taskActive) return false;
+        if (!window.currentTimedTrial) return false;
+        
+        const trial = window.currentTimedTrial;
+        const rt = performance.now() - trialStartTime;
+        
+        if (responseKey === "left" || responseKey === "right") {
+            if (currentTimeout) clearTimeout(currentTimeout);
+            const isCorrect = (responseKey === expectedResponse);
+            let stimulusDesc = currentTaskName === "Stroop" ? `${trial.word} (${trial.ink})` : trial.stimulus;
+            recordTrial(currentTaskName, trial.type, stimulusDesc, expectedResponse, responseKey, rt, isCorrect);
+            
+            // Schedule next trial after short pause
+            window.currentTimedTrial = null;
+            if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
+            nextTrialTimeout = setTimeout(() => showNextTimedTrial(), 300);
+            return true;
+        }
+        return false;
+    }
+    
+    function startTimedTask(taskName) {
+        currentTaskName = taskName;
+        taskActive = true;
+        taskStartTime = Date.now();
+        window.currentTimedTrial = null;
+        
+        // Start timer
+        timerInterval = setInterval(() => updateTimer(), 100);
+        timerDisplay.textContent = "1:30";
+        
+        feedbackMsg.innerText = `${taskName} Running... 90 seconds`;
+        progressInfo.innerText = `${taskName} | Time remaining: 1:30`;
+        
+        // Start first trial
+        showNextTimedTrial();
+    }
+    
+    // ==================== CPT TASK ====================
     async function runCPTTrial() {
         if (!taskActive || currentTrialIndex >= currentTrialsQueue.length) {
             if (currentTrialIndex >= currentTrialsQueue.length) {
@@ -463,6 +552,7 @@
                 taskActive = false;
                 progressInfo.innerText = "CPT finished! Select next task.";
                 stimulusDisplay.innerText = "✅";
+                timerDisplay.textContent = "Done!";
             }
             return;
         }
@@ -474,6 +564,7 @@
         expectedResponse = trial.shouldPress ? "space" : null;
         
         progressInfo.innerText = `CPT | Trial ${currentTrialIndex+1}/${CPT_TOTAL_TRIALS} | ${trial.type.toUpperCase()}`;
+        timerDisplay.textContent = `${currentTrialIndex+1}/${CPT_TOTAL_TRIALS}`;
         
         currentTimeout = setTimeout(() => {
             if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
@@ -484,116 +575,84 @@
                 recordTrial("CPT", trial.type, trial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
                 currentTrialIndex++;
                 
-                // Clear stimulus
+                // Clear stimulus and schedule next trial
                 stimulusDisplay.innerText = "—";
                 setTimeout(() => { runCPTTrial(); }, CPT_INTER_STIMULUS_INTERVAL);
             }
         }, CPT_STIMULUS_DURATION);
     }
     
-    async function runTimedTask(generateTrialFunc, taskName) {
-        taskStartTime = Date.now();
-        timerInterval = setInterval(() => updateTimer(), 100);
-        
-        function runTrial() {
-            if (!taskActive) return;
-            let elapsed = (Date.now() - taskStartTime) / 1000;
-            if (elapsed >= TASK_DURATION) {
-                stopTask();
-                return;
-            }
-            
-            const trial = generateTrialFunc();
-            trialStartTime = performance.now();
-            
-            if (taskName === "Stroop") {
-                stimulusDisplay.innerText = trial.word;
-                stimulusDisplay.style.color = trial.inkColorHex;
-                expectedResponse = trial.correctSide;
-                updateStroopButtons(trial.leftColor, trial.rightColor, null, null);
-            } else {
-                stimulusDisplay.innerText = trial.stimulus;
-                stimulusDisplay.style.color = "white";
-                expectedResponse = trial.correctResp;
-            }
-            
-            progressInfo.innerText = `${taskName} | Time: ${Math.floor(TASK_DURATION - elapsed)}s remaining | ${trial.type}`;
-            
-            currentTimeout = setTimeout(() => {
-                if (taskActive) {
-                    let rt = performance.now() - trialStartTime;
-                    let stimulusDesc = taskName === "Stroop" ? `${trial.word} (${trial.ink})` : trial.stimulus;
-                    recordTrial(taskName, trial.type, stimulusDesc, expectedResponse, "timeout", rt, 0);
-                    if (taskActive) runTrial();
-                }
-            }, 2000);
-        }
-        
-        runTrial();
+    function startCPT() {
+        currentTrialsQueue = generateCPTTrials();
+        currentTaskName = "CPT";
+        currentTrialIndex = 0;
+        taskActive = true;
+        feedbackMsg.innerText = "CPT Running... Press SPACE for any letter except X";
+        timerDisplay.textContent = `0/${CPT_TOTAL_TRIALS}`;
+        runCPTTrial();
     }
     
-    function handleResponse(responseKey) {
+    function handleCPTResponse(responseKey) {
         if (!taskActive) return false;
         const currentTrial = currentTrialsQueue?.[currentTrialIndex];
-        if (!currentTrial && currentTaskName !== "Stroop" && currentTaskName !== "Flanker") return false;
+        if (!currentTrial) return false;
         
-        const rt = performance.now() - trialStartTime;
-        
-        if (currentTaskName === "CPT") {
-            if (responseKey === "space") {
-                if (currentTimeout) clearTimeout(currentTimeout);
-                const isGo = currentTrial.type === "go";
-                let accuracy = isGo ? 1 : 0;
-                let userResp = isGo ? "space" : "commission_error";
-                recordTrial("CPT", currentTrial.type, currentTrial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
-                currentTrialIndex++;
-                stimulusDisplay.innerText = "—";
-                setTimeout(() => { if(taskActive) runCPTTrial(); }, CPT_INTER_STIMULUS_INTERVAL);
-                return true;
-            }
-            return false;
-        }
-        
-        if (responseKey === "left" || responseKey === "right") {
+        if (responseKey === "space") {
             if (currentTimeout) clearTimeout(currentTimeout);
-            const isCorrect = (responseKey === expectedResponse);
-            let stimulusDesc = currentTaskName === "Stroop" ? 
-                `${stimulusDisplay.innerText} (${stimulusDisplay.style.color})` : 
-                stimulusDisplay.innerText;
-            recordTrial(currentTaskName, currentTrial?.type || "mixed", stimulusDesc, expectedResponse, responseKey, rt, isCorrect);
-            if (taskActive) {
-                if (currentTaskName === "Stroop") runTimedTask(generateStroopTrial, "Stroop");
-                else runTimedTask(generateFlankerTrial, "Flanker");
-            }
+            const rt = performance.now() - trialStartTime;
+            const isGo = currentTrial.type === "go";
+            let accuracy = isGo ? 1 : 0;
+            let userResp = isGo ? "space" : "commission_error";
+            recordTrial("CPT", currentTrial.type, currentTrial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
+            currentTrialIndex++;
+            stimulusDisplay.innerText = "—";
+            setTimeout(() => { if(taskActive) runCPTTrial(); }, CPT_INTER_STIMULUS_INTERVAL);
             return true;
         }
         return false;
     }
     
+    // ==================== MAIN HANDLER ====================
+    function handleResponse(responseKey) {
+        if (!taskActive) return false;
+        
+        if (currentTaskName === "CPT") {
+            return handleCPTResponse(responseKey);
+        } else if (currentTaskName === "Stroop" || currentTaskName === "Flanker") {
+            return handleTimedResponse(responseKey);
+        }
+        return false;
+    }
+    
     function startCurrentTask() {
-        if (taskActive) { stopTask(); }
+        // Stop any ongoing task
+        stopTimer();
+        if (currentTimeout) clearTimeout(currentTimeout);
+        if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
+        taskActive = false;
+        window.currentTimedTrial = null;
         
         if (currentTask === "cpt") {
-            currentTrialsQueue = generateCPTTrials();
-            currentTaskName = "CPT";
-            currentTrialIndex = 0;
-            taskActive = true;
-            feedbackMsg.innerText = "CPT Running... Press SPACE for any letter except X";
-            timerDisplay.textContent = `${CPT_TOTAL_TRIALS} trials`;
-            runCPTTrial();
+            startCPT();
         } 
         else if (currentTask === "stroop") {
-            currentTaskName = "Stroop";
-            taskActive = true;
-            feedbackMsg.innerText = "Stroop Running... 90 seconds";
-            runTimedTask(generateStroopTrial, "Stroop");
+            startTimedTask("Stroop");
         } 
         else if (currentTask === "flanker") {
-            currentTaskName = "Flanker";
-            taskActive = true;
-            feedbackMsg.innerText = "Flanker Running... 90 seconds";
-            runTimedTask(generateFlankerTrial, "Flanker");
+            startTimedTask("Flanker");
         }
+    }
+    
+    function stopTask() {
+        stopTimer();
+        if (currentTimeout) clearTimeout(currentTimeout);
+        if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
+        taskActive = false;
+        window.currentTimedTrial = null;
+        feedbackMsg.innerText = "Task stopped.";
+        progressInfo.innerText = "Task stopped. Press START to begin again.";
+        stimulusDisplay.innerText = "—";
+        timerDisplay.textContent = "Stopped";
     }
     
     // ==================== METRICS CALCULATION ====================
@@ -667,7 +726,7 @@
         
         const metrics = computeAllMetrics();
         
-        // Summary CSV (matching your required columns)
+        // Summary CSV
         const summaryHeaders = "CPT_RT_mean,CPT_RT_std,CPT_CV,CPT_omission,CPT_commission,CPT_dprime,CPT_sustained_slope,Stroop_interference,Flanker_effect";
         const summaryRow = `${metrics.CPT_RT_mean},${metrics.CPT_RT_std},${metrics.CPT_CV},${metrics.CPT_omission},${metrics.CPT_commission},${metrics.CPT_dprime},${metrics.CPT_sustained_slope},${metrics.Stroop_interference},${metrics.Flanker_effect}`;
         const summaryCsv = summaryHeaders + "\n" + summaryRow;
@@ -698,12 +757,11 @@
             URL.revokeObjectURL(trialUrl);
         }, 200);
         
-        alert("✅ Downloaded: synthetic_attention_dataset.csv (summary) + raw trials");
+        alert("✅ Downloaded: synthetic_attention_dataset.csv + attention_trials_raw.csv");
     }
     
     function resetAllData() {
-        if (taskActive) { stopTask(); if(currentTimeout) clearTimeout(currentTimeout); }
-        taskActive = false;
+        stopTask();
         allTrials = [];
         currentTrialIndex = 0;
         feedbackMsg.innerText = "All data erased. Start a new task!";
@@ -713,13 +771,13 @@
     }
     
     function switchTask(task) {
-        if (taskActive) { alert("Please stop the current task first (click STOP button)."); return false; }
+        if (taskActive) { stopTask(); }
         currentTask = task;
         updateButtonPanel();
         let instructText = "";
         if (currentTask === "cpt") instructText = "🔹 <strong>CPT:</strong> Press SPACE for any letter EXCEPT 'X'. 50 trials, 80% Go trials.";
-        else if (currentTask === "stroop") instructText = "🎨 <strong>Stroop:</strong> Tap the COLOR button matching the INK color. 90 seconds timed task.";
-        else instructText = "⬅️➡️ <strong>Flanker:</strong> Tap LEFT/RIGHT arrow matching CENTRAL arrow. 90 seconds timed task.";
+        else if (currentTask === "stroop") instructText = "🎨 <strong>Stroop:</strong> Tap the COLOR button matching the INK color. 90 seconds continuous task.";
+        else instructText = "⬅️➡️ <strong>Flanker:</strong> Tap LEFT/RIGHT arrow matching CENTRAL arrow. 90 seconds continuous task.";
         instructionText.innerHTML = instructText;
         resetAllData();
         return true;
