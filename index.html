@@ -310,13 +310,13 @@
         </div>
     </div>
 
-    <footer>✅ Complete all tasks → Data saves automatically to your Google Sheet</footer>
+    <footer>✅ Complete all tasks → Data saves automatically to Google Sheet</footer>
 </div>
 
 <script>
     // ==================== CONFIGURATION ====================
     // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT URL
-    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit?gid=0#gid=0";
+    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit?usp=sharing";
     
     // Generate unique session ID for this participant
     const SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
@@ -401,7 +401,7 @@
             return true;
             
         } catch (error) {
-            saveStatus.innerHTML = "❌ Auto-save failed. Check your Google Sheet URL.";
+            saveStatus.innerHTML = "❌ Auto-save failed. Check Google Sheet URL.";
             saveStatus.className = "status-error";
             console.error("Save error:", error);
             return false;
