@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Attention Metrics Lab - Auto-Save to Google Sheet</title>
+    <title>Attention Metrics Lab - Fixed CPT Sequential Trials</title>
     <style>
         * {
             box-sizing: border-box;
@@ -304,13 +304,8 @@
 
 <script>
     // ==================== YOUR CONFIGURATION ====================
-    // Web App URL (for saving data) - YOUR NEW URL
     const GOOGLE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwqY0AKHZw2QzvI80V26A_BuEaRqW1WmI_qvbhz9vFlb-skbVtFciZo3tZ8UGefu1h-3g/exec";
-    
-    // Your Google Sheet URL (for reference only)
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/15ED8i1NEekhSWgZSNoTmDX-rGJnnkYVRvIHucNh_29Q/edit";
-    
-    // Generate unique session ID for this participant
     const SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
     
     // ==================== TASK PARAMETERS ====================
@@ -334,6 +329,7 @@
     let timerInterval = null;
     let nextTrialTimeout = null;
     let dataSaved = false;
+    let isProcessingResponse = false;
     
     const stimulusDisplay = document.getElementById("stimulusDisplay");
     const feedbackMsg = document.getElementById("feedbackMsg");
@@ -367,34 +363,26 @@
         saveStatus.className = "status-saving";
         
         try {
-            // Send data to Google Apps Script Web App
-            const response = await fetch(GOOGLE_WEBAPP_URL, {
+            await fetch(GOOGLE_WEBAPP_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(metrics)
             });
             
             dataSaved = true;
             saveStatus.innerHTML = "✅ Data saved to attention_dataset!";
             saveStatus.className = "status-saved";
-            
             localStorage.setItem('attention_data_saved', 'true');
             localStorage.setItem('attention_session_id', SESSION_ID);
-            
             return true;
-            
         } catch (error) {
-            saveStatus.innerHTML = "❌ Save failed. Check your internet connection.";
+            saveStatus.innerHTML = "❌ Save failed. Check connection.";
             saveStatus.className = "status-error";
-            console.error("Save error:", error);
             return false;
         }
     }
     
-    // Check if already saved
     if (localStorage.getItem('attention_data_saved') === 'true') {
         dataSaved = true;
         saveStatus.innerHTML = "✅ Data already saved for this session!";
@@ -498,7 +486,135 @@
         return { type: condition, stimulus: stimulus, correctResp: central === "<" ? "left" : "right" };
     }
     
-    // ==================== TIMER FUNCTIONS ====================
+    // ==================== CPT TASK - FIXED SEQUENTIAL TRIALS ====================
+    function scheduleNextCPTTrial() {
+        if (!taskActive) return;
+        
+        // Clear the display during ISI
+        stimulusDisplay.innerText = "—";
+        
+        // Schedule the next trial after ISI
+        setTimeout(() => {
+            if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
+                showCPTTrial();
+            } else if (taskActive && currentTrialIndex >= currentTrialsQueue.length) {
+                completeCPTTask();
+            }
+        }, CPT_INTER_STIMULUS_INTERVAL);
+    }
+    
+    function showCPTTrial() {
+        if (!taskActive || currentTrialIndex >= currentTrialsQueue.length) {
+            if (currentTrialIndex >= currentTrialsQueue.length) {
+                completeCPTTask();
+            }
+            return;
+        }
+        
+        const trial = currentTrialsQueue[currentTrialIndex];
+        trialStartTime = performance.now();
+        stimulusDisplay.innerText = trial.stimulus;
+        stimulusDisplay.style.color = "white";
+        expectedResponse = trial.shouldPress ? "space" : null;
+        
+        // Update progress display
+        progressInfo.innerText = `CPT | Trial ${currentTrialIndex+1}/${CPT_TOTAL_TRIALS} | ${trial.type.toUpperCase()}`;
+        timerDisplay.textContent = `${currentTrialIndex+1}/${CPT_TOTAL_TRIALS}`;
+        
+        // Set timeout for no response (omission for Go, correct for NoGo)
+        currentTimeout = setTimeout(() => {
+            if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
+                const rt = performance.now() - trialStartTime;
+                const isGo = trial.type === "go";
+                const accuracy = isGo ? 0 : 1;
+                const userResp = isGo ? "omission" : "correct_no_press";
+                recordTrial("CPT", trial.type, trial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
+                
+                // Move to next trial
+                currentTrialIndex++;
+                
+                // Schedule next trial
+                if (currentTrialIndex < currentTrialsQueue.length) {
+                    scheduleNextCPTTrial();
+                } else {
+                    completeCPTTask();
+                }
+            }
+        }, CPT_STIMULUS_DURATION);
+    }
+    
+    function handleCPTResponse(responseKey) {
+        if (!taskActive || isProcessingResponse) return false;
+        if (responseKey !== "space") return false;
+        
+        const currentTrial = currentTrialsQueue?.[currentTrialIndex];
+        if (!currentTrial) return false;
+        
+        // Prevent multiple responses
+        isProcessingResponse = true;
+        
+        // Clear the timeout since we got a response
+        if (currentTimeout) {
+            clearTimeout(currentTimeout);
+            currentTimeout = null;
+        }
+        
+        const rt = performance.now() - trialStartTime;
+        const isGo = currentTrial.type === "go";
+        const accuracy = isGo ? 1 : 0;
+        const userResp = isGo ? "space" : "commission_error";
+        
+        recordTrial("CPT", currentTrial.type, currentTrial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
+        
+        // Move to next trial
+        currentTrialIndex++;
+        
+        // Schedule next trial or complete
+        if (currentTrialIndex < currentTrialsQueue.length) {
+            scheduleNextCPTTrial();
+        } else {
+            completeCPTTask();
+        }
+        
+        // Reset processing flag after a short delay
+        setTimeout(() => { isProcessingResponse = false; }, 100);
+        return true;
+    }
+    
+    async function completeCPTTask() {
+        if (!taskActive) return;
+        
+        taskActive = false;
+        if (currentTimeout) clearTimeout(currentTimeout);
+        
+        feedbackMsg.innerText = "🎉 CPT Completed! 50 trials done!";
+        progressInfo.innerText = "CPT finished! Saving data...";
+        stimulusDisplay.innerText = "✅";
+        timerDisplay.textContent = "Done!";
+        
+        // Auto-save data
+        await autoSaveToSheet();
+        
+        // Reset for next task
+        currentTrialIndex = 0;
+        currentTrialsQueue = [];
+    }
+    
+    function startCPT() {
+        currentTrialsQueue = generateCPTTrials();
+        currentTaskName = "CPT";
+        currentTrialIndex = 0;
+        taskActive = true;
+        isProcessingResponse = false;
+        feedbackMsg.innerText = "CPT Running... Press SPACE for any letter except X";
+        timerDisplay.textContent = `0/${CPT_TOTAL_TRIALS}`;
+        progressInfo.innerText = `CPT | Trial 1/${CPT_TOTAL_TRIALS}`;
+        
+        // Start the first trial
+        showCPTTrial();
+    }
+    
+    // ==================== TIMED TASKS (Stroop & Flanker) ====================
     function stopTimer() {
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         if (nextTrialTimeout) { clearTimeout(nextTrialTimeout); nextTrialTimeout = null; }
@@ -532,7 +648,6 @@
         await autoSaveToSheet();
     }
     
-    // ==================== TIMED TASK ====================
     let currentTimedTrial = null;
     
     function showNextTimedTrial() {
@@ -606,75 +721,6 @@
         showNextTimedTrial();
     }
     
-    // ==================== CPT TASK ====================
-    async function runCPTTrial() {
-        if (!taskActive || currentTrialIndex >= currentTrialsQueue.length) {
-            if (currentTrialIndex >= currentTrialsQueue.length) {
-                feedbackMsg.innerText = "🎉 CPT Completed! 50 trials done!";
-                taskActive = false;
-                progressInfo.innerText = "CPT finished! Saving data...";
-                stimulusDisplay.innerText = "✅";
-                timerDisplay.textContent = "Done!";
-                
-                await autoSaveToSheet();
-            }
-            return;
-        }
-        
-        const trial = currentTrialsQueue[currentTrialIndex];
-        trialStartTime = performance.now();
-        stimulusDisplay.innerText = trial.stimulus;
-        stimulusDisplay.style.color = "white";
-        expectedResponse = trial.shouldPress ? "space" : null;
-        
-        progressInfo.innerText = `CPT | Trial ${currentTrialIndex+1}/${CPT_TOTAL_TRIALS} | ${trial.type.toUpperCase()}`;
-        timerDisplay.textContent = `${currentTrialIndex+1}/${CPT_TOTAL_TRIALS}`;
-        
-        currentTimeout = setTimeout(() => {
-            if (taskActive && currentTrialIndex < currentTrialsQueue.length) {
-                let rt = performance.now() - trialStartTime;
-                let isGo = trial.type === "go";
-                let accuracy = isGo ? 0 : 1;
-                let userResp = isGo ? "omission" : "correct_no_press";
-                recordTrial("CPT", trial.type, trial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
-                currentTrialIndex++;
-                
-                stimulusDisplay.innerText = "—";
-                setTimeout(() => { runCPTTrial(); }, CPT_INTER_STIMULUS_INTERVAL);
-            }
-        }, CPT_STIMULUS_DURATION);
-    }
-    
-    function startCPT() {
-        currentTrialsQueue = generateCPTTrials();
-        currentTaskName = "CPT";
-        currentTrialIndex = 0;
-        taskActive = true;
-        feedbackMsg.innerText = "CPT Running... Press SPACE for any letter except X";
-        timerDisplay.textContent = `0/${CPT_TOTAL_TRIALS}`;
-        runCPTTrial();
-    }
-    
-    function handleCPTResponse(responseKey) {
-        if (!taskActive) return false;
-        const currentTrial = currentTrialsQueue?.[currentTrialIndex];
-        if (!currentTrial) return false;
-        
-        if (responseKey === "space") {
-            if (currentTimeout) clearTimeout(currentTimeout);
-            const rt = performance.now() - trialStartTime;
-            const isGo = currentTrial.type === "go";
-            let accuracy = isGo ? 1 : 0;
-            let userResp = isGo ? "space" : "commission_error";
-            recordTrial("CPT", currentTrial.type, currentTrial.stimulus, isGo ? "space" : "no press", userResp, rt, accuracy);
-            currentTrialIndex++;
-            stimulusDisplay.innerText = "—";
-            setTimeout(() => { if(taskActive) runCPTTrial(); }, CPT_INTER_STIMULUS_INTERVAL);
-            return true;
-        }
-        return false;
-    }
-    
     // ==================== MAIN HANDLER ====================
     function handleResponse(responseKey) {
         if (!taskActive) return false;
@@ -688,10 +734,13 @@
     }
     
     function startCurrentTask() {
-        stopTimer();
+        // Stop any ongoing task
         if (currentTimeout) clearTimeout(currentTimeout);
         if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
+        if (timerInterval) clearInterval(timerInterval);
+        
         taskActive = false;
+        isProcessingResponse = false;
         currentTimedTrial = null;
         
         if (currentTask === "cpt") {
@@ -706,11 +755,14 @@
     }
     
     function stopTask() {
-        stopTimer();
         if (currentTimeout) clearTimeout(currentTimeout);
         if (nextTrialTimeout) clearTimeout(nextTrialTimeout);
+        if (timerInterval) clearInterval(timerInterval);
+        
         taskActive = false;
+        isProcessingResponse = false;
         currentTimedTrial = null;
+        
         feedbackMsg.innerText = "Task stopped.";
         progressInfo.innerText = "Task stopped. Press START to begin again.";
         stimulusDisplay.innerText = "—";
@@ -781,7 +833,9 @@
         stopTask();
         allTrials = [];
         currentTrialIndex = 0;
+        currentTrialsQueue = [];
         dataSaved = false;
+        isProcessingResponse = false;
         localStorage.removeItem('attention_data_saved');
         localStorage.removeItem('attention_session_id');
         feedbackMsg.innerText = "All data erased. Start a new task!";
@@ -836,8 +890,6 @@
     
     updateButtonPanel();
     document.querySelector(".task-btn[data-task='cpt']").classList.add("active");
-    
-    // Show that URL is configured
     saveStatus.innerHTML = "✅ Ready! Data will auto-save to attention_dataset when tasks complete.";
     saveStatus.className = "status-saved";
 </script>
